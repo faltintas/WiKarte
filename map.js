@@ -1,0 +1,496 @@
+// WiKarte — Map Script
+// Runs inside the extension iframe (map.html). Renders listings as clustered
+// price-tag markers on a Leaflet map and handles highlight/theme messages.
+
+const map         = L.map('map').setView([47.5, 14.5], 7); // Austria center
+const statusEl    = document.getElementById('status');
+const iframeToken = new URLSearchParams(location.search).get('wikarteToken') || '';
+
+// ─── tile layers ─────────────────────────────────────────────────────────────
+
+const lightTiles = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+  {
+    maxZoom: 20,
+    subdomains: 'abcd',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
+      '&copy; <a href="https://carto.com/">CARTO</a>'
+  }
+);
+const darkTiles = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  {
+    maxZoom: 20,
+    subdomains: 'abcd',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
+      '&copy; <a href="https://carto.com/">CARTO</a>'
+  }
+);
+
+let currentTileLayer = lightTiles;
+lightTiles.addTo(map);
+
+// ─── theme ────────────────────────────────────────────────────────────────────
+
+let currentThemeMode = 'light';
+
+function setTheme(theme) {
+  const isDark = theme === 'dark';
+  if (isDark && currentTileLayer !== darkTiles) {
+    map.removeLayer(lightTiles);
+    darkTiles.addTo(map);
+    currentTileLayer = darkTiles;
+  } else if (!isDark && currentTileLayer !== lightTiles) {
+    map.removeLayer(darkTiles);
+    lightTiles.addTo(map);
+    currentTileLayer = lightTiles;
+  }
+  document.body.className = isDark ? 'dark-theme' : '';
+  currentThemeMode = theme;
+  if (themeControl?._updateActive) themeControl._updateActive();
+}
+
+// ─── marker cluster ───────────────────────────────────────────────────────────
+
+const markers = L.markerClusterGroup({
+  maxClusterRadius: 40,
+  chunkedLoading: true,
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false
+});
+map.addLayer(markers);
+
+const markerMap = new Map(); // adId → Leaflet marker
+let   lastBounds = null;
+let   fitTimeoutIds = [];
+
+// ─── controls ─────────────────────────────────────────────────────────────────
+
+const ResetControl = L.Control.extend({
+  options: { position: 'topleft' },
+  onAdd() {
+    const btn = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+    const a   = L.DomUtil.create('a', 'reset-view-btn', btn);
+    a.href  = '#';
+    a.title = 'Alle Anzeigen anzeigen';
+    // prettier-ignore
+    a.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>';
+    L.DomEvent.on(a, 'click', (e) => {
+      L.DomEvent.preventDefault(e);
+      if (lastBounds?.length) map.fitBounds(lastBounds, { padding: [30, 30] });
+    });
+    return btn;
+  }
+});
+map.addControl(new ResetControl());
+
+const ThemeControl = L.Control.extend({
+  options: { position: 'topleft' },
+  onAdd() {
+    const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+
+    const sunBtn  = L.DomUtil.create('a', 'theme-toggle-btn', container);
+    sunBtn.href   = '#';
+    sunBtn.title  = 'Light theme';
+    // prettier-ignore
+    sunBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+
+    const moonBtn  = L.DomUtil.create('a', 'theme-toggle-btn', container);
+    moonBtn.href   = '#';
+    moonBtn.title  = 'Dark theme';
+    // prettier-ignore
+    moonBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+
+    function updateActive() {
+      sunBtn.classList.toggle('active',  currentThemeMode === 'light');
+      moonBtn.classList.toggle('active', currentThemeMode === 'dark');
+    }
+
+    // setTheme already updates currentThemeMode and calls _updateActive
+    L.DomEvent.on(sunBtn, 'click', (e) => {
+      L.DomEvent.preventDefault(e);
+      L.DomEvent.stopPropagation(e);
+      setTheme('light');
+    });
+    L.DomEvent.on(moonBtn, 'click', (e) => {
+      L.DomEvent.preventDefault(e);
+      L.DomEvent.stopPropagation(e);
+      setTheme('dark');
+    });
+
+    updateActive();
+    this._updateActive = updateActive;
+    return container;
+  }
+});
+const themeControl = new ThemeControl();
+map.addControl(themeControl);
+
+// ─── utilities ────────────────────────────────────────────────────────────────
+
+// Reusable element avoids a new DOM node allocation on every escapeHtml call
+const _escapeDiv = document.createElement('div');
+
+function escapeHtml(str) {
+  if (!str || str === 'NA') return '';
+  _escapeDiv.textContent = str;
+  return _escapeDiv.innerHTML;
+}
+
+function formatPrice(price) {
+  if (!price || price === 'NA') return '';
+  const num = parseFloat(price);
+  if (isNaN(num)) return escapeHtml(price);
+  return num.toLocaleString('de-AT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+}
+
+function shortPrice(price) {
+  if (!price || price === 'NA') return '?';
+  const num = parseFloat(price);
+  if (isNaN(num)) return price;
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(num % 1_000_000 === 0 ? 0 : 1) + 'M';
+  if (num >= 100_000)   return Math.round(num / 1000) + 'k';
+  return Math.round(num).toLocaleString('de-AT');
+}
+
+function createPriceIcon(labelText) {
+  return L.divIcon({
+    className: 'price-marker',
+    html: `<div class="price-tag">${labelText}</div>`,
+    iconSize: null,
+    iconAnchor: [0, 0]
+  });
+}
+
+function sanitizeUrl(url, { allowRelative = false, allowedHosts = null } = {}) {
+  if (typeof url !== 'string' || !url.trim()) return '';
+
+  try {
+    const parsed = allowRelative
+      ? new URL(url, 'https://www.willhaben.at')
+      : new URL(url);
+
+    if (parsed.protocol !== 'https:') return '';
+
+    if (allowedHosts && !allowedHosts.some(host =>
+      parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
+    )) {
+      return '';
+    }
+
+    return parsed.toString();
+  } catch {
+    return '';
+  }
+}
+
+function buildPopupHtml({ imageUrl, heading, price, detailParts, location, seoUrl }) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'listing-popup';
+
+  if (imageUrl) {
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.alt = '';
+    img.loading = 'lazy';
+    wrapper.appendChild(img);
+  }
+
+  const title = document.createElement('h3');
+  title.textContent = heading;
+  wrapper.appendChild(title);
+
+  if (price) {
+    const priceEl = document.createElement('div');
+    priceEl.className = 'price';
+    priceEl.textContent = price;
+    wrapper.appendChild(priceEl);
+  }
+
+  if (detailParts.length) {
+    const details = document.createElement('div');
+    details.className = 'details';
+    details.innerHTML = detailParts.map(escapeHtml).join(' &bull; ');
+    wrapper.appendChild(details);
+  }
+
+  const locationEl = document.createElement('div');
+  locationEl.className = 'details';
+  locationEl.textContent = location;
+  wrapper.appendChild(locationEl);
+
+  if (seoUrl) {
+    const link = document.createElement('a');
+    link.href = seoUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'Anzeige öffnen →';
+    wrapper.appendChild(link);
+  }
+
+  return wrapper.outerHTML;
+}
+
+// ─── attribute names required per listing ─────────────────────────────────────
+// Defined once at module level — avoids recreating this array for every listing.
+const NEEDED_ATTRS = [
+  'MMO', 'PRICE', 'ESTATE_SIZE', 'ADDRESS', 'LOCATION',
+  'COORDINATES', 'HEADING', 'POSTCODE', 'ESTATE_SIZE/LIVING_AREA',
+  'SEO_URL', 'ROOMS', 'NUMBER_OF_ROOMS', 'BODY_DYN',
+  'ALL_IMAGE_URLS', 'PROPERTY_TYPE', 'PRICE_FOR_DISPLAY', 'PRICE/AMOUNT'
+];
+
+// ─── listings ─────────────────────────────────────────────────────────────────
+
+function addListings(data) {
+  fitTimeoutIds.forEach(clearTimeout);
+  fitTimeoutIds = [];
+  markers.clearLayers();
+  markerMap.clear();
+
+  let summaries;
+  if (data.advertSummaryList?.advertSummary) {
+    summaries = data.advertSummaryList.advertSummary;
+  } else if (data.rows) {
+    summaries = data.rows;
+  } else {
+    if (statusEl) statusEl.textContent = 'No listings found in data';
+    return;
+  }
+
+  const bounds = [];
+  let count = 0;
+
+  summaries.forEach((item) => {
+    // Build a normalised attribute map, defaulting all known keys to 'NA'
+    const attrs = {};
+    NEEDED_ATTRS.forEach(n => { attrs[n] = 'NA'; });
+
+    if (item.attributes?.attribute) {
+      item.attributes.attribute.forEach((entry) => {
+        attrs[entry.name] = entry.values ? entry.values[0] : 'NA';
+      });
+    }
+
+    // Merkliste items carry some fields at the top level rather than in attributes
+    if (attrs['POSTCODE']  === 'NA' && item.postCode)    attrs['POSTCODE']  = item.postCode;
+    if (attrs['LOCATION']  === 'NA' && item.postalName)  attrs['LOCATION']  = item.postalName;
+    if (attrs['HEADING']   === 'NA' && item.description) attrs['HEADING']   = item.description;
+    if (attrs['PRICE']     === 'NA' && attrs['PRICE/AMOUNT'] !== 'NA') {
+      attrs['PRICE'] = attrs['PRICE/AMOUNT'];
+    }
+
+    // Image URL — prefer MMO thumbnail, fall back to advertImageList
+    let imageUrl = '';
+    if (attrs['MMO'] !== 'NA') {
+      imageUrl = sanitizeUrl(`https://cache.willhaben.at/mmo/${attrs['MMO']}`, {
+        allowedHosts: ['willhaben.at']
+      });
+    } else {
+      const firstImg = item.advertImageList?.advertImage?.[0];
+      if (firstImg) {
+        imageUrl = sanitizeUrl(firstImg.mainImageUrl || firstImg.referenceImageUrl || '', {
+          allowedHosts: ['willhaben.at']
+        });
+      }
+    }
+
+    // teaserAttributes can supply size/rooms when missing from attributes
+    if (item.teaserAttributes?.length) {
+      item.teaserAttributes.forEach((ta) => {
+        if (ta.name === 'ESTATE_SIZE/LIVING_AREA' && attrs['ESTATE_SIZE/LIVING_AREA'] === 'NA') {
+          attrs['ESTATE_SIZE/LIVING_AREA'] = ta.values?.[0] ?? 'NA';
+        }
+        if (ta.name === 'NUMBER_OF_ROOMS' && attrs['NUMBER_OF_ROOMS'] === 'NA') {
+          attrs['NUMBER_OF_ROOMS'] = ta.values?.[0] ?? 'NA';
+        }
+      });
+    }
+
+    // Resolve a link to the listing detail page
+    let seoUrl = '';
+    if (attrs['SEO_URL'] !== 'NA') {
+      seoUrl = sanitizeUrl(`https://www.willhaben.at/iad/${attrs['SEO_URL']}`, {
+        allowedHosts: ['willhaben.at']
+      });
+    } else {
+      const adLink = item.contextLinkList?.contextLink?.find(
+        l => l.rel === 'self' || l.rel === 'seo' || l.uri
+      );
+      if (adLink?.uri) {
+        seoUrl = sanitizeUrl(adLink.uri, {
+          allowRelative: true,
+          allowedHosts: ['willhaben.at']
+        });
+      }
+    }
+
+    // Resolve coordinates — prefer explicit COORDINATES, fall back to postcode lookup
+    let coords;
+    const coordStr = attrs['COORDINATES'];
+    if (coordStr && coordStr !== 'NA') {
+      coords = coordStr.split(',').map(Number);
+    } else if (attrs['POSTCODE'] !== 'NA' && typeof POSTCODE_COORDS !== 'undefined') {
+      coords = POSTCODE_COORDS[attrs['POSTCODE'].trim()];
+    }
+    if (!coords || isNaN(coords[0]) || isNaN(coords[1])) return;
+
+    count++;
+    bounds.push(coords);
+
+    // Compute size once — used in both the popup and the price-tag label
+    const sizeLabel = attrs['ESTATE_SIZE/LIVING_AREA'] !== 'NA'
+      ? attrs['ESTATE_SIZE/LIVING_AREA']
+      : attrs['ESTATE_SIZE'] !== 'NA'
+        ? attrs['ESTATE_SIZE']
+        : '';
+
+    const rooms = attrs['NUMBER_OF_ROOMS'] !== 'NA'
+      ? attrs['NUMBER_OF_ROOMS']
+      : attrs['ROOMS'] !== 'NA'
+        ? attrs['ROOMS']
+        : '';
+
+    const price    = formatPrice(attrs['PRICE']);
+    const heading  = attrs['HEADING'] && attrs['HEADING'] !== 'NA' ? String(attrs['HEADING']) : '';
+    const location = [attrs['POSTCODE'], attrs['LOCATION'], attrs['ADDRESS']]
+      .filter(v => v && v !== 'NA')
+      .map(escapeHtml)
+      .join(', ');
+
+    const detailParts = [];
+    if (sizeLabel) detailParts.push(`${escapeHtml(sizeLabel)} m\u00B2`);
+    if (rooms)     detailParts.push(`${escapeHtml(rooms)} Zimmer`);
+
+    const popupHtml = buildPopupHtml({
+      imageUrl,
+      heading,
+      price,
+      detailParts,
+      location,
+      seoUrl
+    });
+
+    let tagText = `\u20AC ${escapeHtml(shortPrice(attrs['PRICE']))}`;
+    if (sizeLabel) tagText += ` (${escapeHtml(sizeLabel)}m\u00B2)`;
+
+    const marker = L.marker(coords, { icon: createPriceIcon(tagText) });
+    marker.bindPopup(popupHtml, { maxWidth: 300 });
+    markers.addLayer(marker);
+
+    // Register the marker under every numeric ID we can find for this listing
+    if (item.id) markerMap.set(String(item.id), marker);
+
+    const urlNumericId = (attrs['SEO_URL'] !== 'NA' ? attrs['SEO_URL'] : seoUrl)
+      .match(/(\d{5,})/)?.[1];
+    if (urlNumericId) markerMap.set(urlNumericId, marker);
+  });
+
+  if (bounds.length > 0) {
+    lastBounds = bounds;
+
+    function fitAll() {
+      map.invalidateSize();
+      if (bounds.length === 1) {
+        map.setView(bounds[0], 16);
+      } else {
+        map.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
+      }
+    }
+
+    // Three retries handle race conditions where the panel container is still
+    // transitioning or the browser hasn't finished laying out at 100 ms / 500 ms.
+    fitTimeoutIds.push(setTimeout(fitAll, 100));
+    fitTimeoutIds.push(setTimeout(fitAll, 500));
+    fitTimeoutIds.push(setTimeout(fitAll, 1500));
+  }
+
+  if (statusEl) statusEl.textContent = `${count} Anzeigen auf der Karte`;
+}
+
+// ─── highlight ────────────────────────────────────────────────────────────────
+
+let highlightedMarker  = null;
+let originalIcon       = null;
+let highlightedCluster = null;
+
+function createHighlightIcon(text) {
+  return L.divIcon({
+    className: 'price-marker',
+    html: `<div class="price-tag highlighted">${text}</div>`,
+    iconSize: null,
+    iconAnchor: [0, 0]
+  });
+}
+
+function highlightMarker(adId) {
+  unhighlightMarker();
+  const marker = markerMap.get(String(adId));
+  if (!marker) return;
+
+  highlightedMarker = marker;
+  originalIcon      = marker.getIcon();
+
+  const visibleParent = markers.getVisibleParent(marker);
+
+  if (visibleParent && visibleParent !== marker) {
+    // Marker is inside a cluster — highlight the cluster element
+    const clusterEl = visibleParent.getElement();
+    if (clusterEl) {
+      clusterEl.classList.add('cluster-highlighted');
+      highlightedCluster = clusterEl;
+    }
+  } else {
+    // Marker is directly visible — swap its icon for the highlighted variant
+    _escapeDiv.innerHTML = originalIcon.options.html;
+    const text = _escapeDiv.textContent || '';
+    marker.setIcon(createHighlightIcon(text));
+    marker.setZIndexOffset(10000);
+  }
+}
+
+function unhighlightMarker() {
+  if (highlightedCluster) {
+    highlightedCluster.classList.remove('cluster-highlighted');
+    highlightedCluster = null;
+  }
+  if (highlightedMarker && originalIcon) {
+    highlightedMarker.setIcon(originalIcon);
+    highlightedMarker.setZIndexOffset(0);
+    highlightedMarker = null;
+    originalIcon      = null;
+  }
+}
+
+// ─── message listener ─────────────────────────────────────────────────────────
+
+window.addEventListener('message', function (event) {
+  if (!event.data) return;
+  // Accept messages from the parent frame only (our content script).
+  // Null source is permitted to allow programmatic dispatch in tests.
+  if (event.source && event.source !== window.parent) return;
+  if (iframeToken && event.data.token !== iframeToken) return;
+
+  switch (event.data.type) {
+    case 'WIKARTE_LISTINGS':
+      addListings(event.data.data);
+      break;
+    case 'WIKARTE_THEME':
+      setTheme(event.data.theme);
+      break;
+    case 'WIKARTE_INVALIDATE':
+      map.invalidateSize();
+      if (lastBounds?.length) {
+        map.fitBounds(lastBounds, { padding: [30, 30], maxZoom: 18 });
+      }
+      break;
+    case 'WIKARTE_HIGHLIGHT':
+      highlightMarker(event.data.adId);
+      break;
+    case 'WIKARTE_UNHIGHLIGHT':
+      unhighlightMarker();
+      break;
+  }
+});

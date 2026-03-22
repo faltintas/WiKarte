@@ -1,0 +1,13 @@
+{
+  "name": "wikarte",
+  "version": "1.0.0",
+  "description": "Chrome extension to show willhaben listings on a map",
+  "license": "MIT",
+  "scripts": {
+    "test": "jest --verbose"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}

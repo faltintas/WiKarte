@@ -1,0 +1,53 @@
+/* WiKarte — injected styles (no modifications to willhaben's DOM) */
+
+/* ── Map side panel ─────────────────────────────────────────────────────────── */
+#wikarte-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 50vw;
+  height: 100vh;
+  z-index: 99;
+  border-left: 1px solid #3a3a4a;
+  background: #2b2b3d;
+}
+
+#wikarte-panel iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ── Toggle button ──────────────────────────────────────────────────────────── */
+#wikarte-toggle {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 100;
+  background: #4db8e8;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  transition: background 0.2s;
+  line-height: 0;
+}
+
+#wikarte-toggle:hover {
+  background: #3aaad9;
+  color: white;
+}
+
+/* ── Visibility states ──────────────────────────────────────────────────────── */
+html:not(.wikarte-active) #wikarte-panel {
+  display: none;
+}
+
+/* When map is open, shift the toggle button left so it clears the panel */
+html.wikarte-active #wikarte-toggle {
+  right: calc(50vw + 10px);
+}
