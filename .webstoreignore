@@ -7,10 +7,10 @@ tests/
 scripts/
 docs/
 README.md
+README.dev.md
 README.functional.md
 README.technical.md
 package-lock.json
 package.json
 .gitignore
 .wikarte-bump-type
-
