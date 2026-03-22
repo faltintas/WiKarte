@@ -1,26 +1,42 @@
 {
   "manifest_version": 3,
   "name": "WiKarte",
-  "version": "1.0",
+  "version": "1.1.0",
   "description": "Shows willhaben.at listings on an interactive map side panel",
   "content_scripts": [
     {
-      "matches": ["*://*.willhaben.at/*"],
-      "js": ["page-intercept.js"],
+      "matches": [
+        "*://*.willhaben.at/*"
+      ],
+      "js": [
+        "page-intercept.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["*://*.willhaben.at/*"],
-      "js": ["content.js"],
-      "css": ["styles.css"],
+      "matches": [
+        "*://*.willhaben.at/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["map.html", "lib/*", "postcodes.js"],
-      "matches": ["*://*.willhaben.at/*"]
+      "resources": [
+        "map.html",
+        "lib/*",
+        "postcodes.js"
+      ],
+      "matches": [
+        "*://*.willhaben.at/*"
+      ]
     }
   ],
   "icons": {

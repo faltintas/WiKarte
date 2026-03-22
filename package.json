@@ -1,10 +1,19 @@
 {
   "name": "wikarte",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Chrome extension to show willhaben listings on a map",
   "license": "MIT",
   "scripts": {
-    "test": "jest --verbose"
+    "test": "jest --verbose",
+    "version:bump": "node scripts/bump-version.js minor",
+    "version:minor": "node scripts/bump-version.js minor",
+    "version:patch": "node scripts/bump-version.js patch",
+    "version:major": "node scripts/bump-version.js major",
+    "version:next:minor": "node scripts/bump-version.js set-next minor",
+    "version:next:patch": "node scripts/bump-version.js set-next patch",
+    "version:next:major": "node scripts/bump-version.js set-next major",
+    "version:next:show": "node scripts/bump-version.js next-type",
+    "version:next:clear": "node scripts/bump-version.js clear-next"
   },
   "devDependencies": {
     "jest": "^29.7.0",
