@@ -18,3 +18,10 @@ WiKarte bundles the following third-party libraries:
 
 Map tiles are loaded at runtime from CARTO basemaps and include attribution in the UI.
 
+## Vienna district boundaries
+
+- Dataset: Bezirksgrenzen Wien
+- Source: https://data.wien.gv.at/
+- File: `vienna-districts.js`
+- License: CC BY 4.0
+- Attribution: Datenquelle: Stadt Wien - data.wien.gv.at

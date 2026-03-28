@@ -16,6 +16,11 @@ global.MutationObserver = class {
 
 // ── Leaflet mock factory (each test file that needs it calls setupLeaflet()) ─
 global.setupLeaflet = function () {
+  const normalizeLatLng = (value) => {
+    if (Array.isArray(value)) return { lat: value[0], lng: value[1] };
+    return value;
+  };
+
   const makeMarker = (coords, opts) => ({
     _coords: coords,
     _opts: opts,
@@ -36,12 +41,40 @@ global.setupLeaflet = function () {
     getVisibleParent: jest.fn().mockReturnValue(null)
   };
 
+  const makeLayerGroup = (layers = []) => ({
+    _layers: [...layers],
+    addLayer: jest.fn(function (layer) { this._layers.push(layer); return this; }),
+    removeLayer: jest.fn(function (layer) {
+      this._layers = this._layers.filter(item => item !== layer);
+      return this;
+    })
+  });
+
   const mockMap = {
+    _layers: new Set(),
+    _events: {},
+    _zoom: 7,
+    _bounds: { intersects: jest.fn().mockReturnValue(false) },
     setView:       jest.fn().mockReturnThis(),
-    addLayer:      jest.fn().mockReturnThis(),
+    addLayer:      jest.fn(function (layer) { this._layers.add(layer); return this; }),
     addControl:    jest.fn(),
     createPane:    jest.fn().mockImplementation(() => ({ style: {} })),
-    removeLayer:   jest.fn(),
+    removeLayer:   jest.fn(function (layer) { this._layers.delete(layer); return this; }),
+    hasLayer:      jest.fn(function (layer) { return this._layers.has(layer); }),
+    on:            jest.fn(function (events, handler) {
+      events.split(/\s+/).forEach((eventName) => {
+        this._events[eventName] = this._events[eventName] || [];
+        this._events[eventName].push(handler);
+      });
+      return this;
+    }),
+    off:           jest.fn().mockReturnThis(),
+    fire:          jest.fn(function (eventName) {
+      (this._events[eventName] || []).forEach(handler => handler());
+      return this;
+    }),
+    getZoom:       jest.fn(function () { return this._zoom; }),
+    getBounds:     jest.fn(function () { return this._bounds; }),
     invalidateSize: jest.fn(),
     fitBounds:     jest.fn()
   };
@@ -49,7 +82,32 @@ global.setupLeaflet = function () {
   global.L = {
     map:    jest.fn().mockReturnValue(mockMap),
     tileLayer: jest.fn().mockReturnValue({ addTo: jest.fn() }),
+    latLngBounds: jest.fn().mockImplementation((southWest, northEast) => {
+      const sw = normalizeLatLng(southWest);
+      const ne = normalizeLatLng(northEast);
+      return {
+        _southWest: sw,
+        _northEast: ne,
+        intersects(other) {
+          const otherSw = normalizeLatLng(other._southWest ?? other[0] ?? other.southWest ?? other.sw);
+          const otherNe = normalizeLatLng(other._northEast ?? other[1] ?? other.northEast ?? other.ne);
+          if (!otherSw || !otherNe) return false;
+          return !(
+            otherSw.lat > ne.lat ||
+            otherNe.lat < sw.lat ||
+            otherSw.lng > ne.lng ||
+            otherNe.lng < sw.lng
+          );
+        }
+      };
+    }),
     markerClusterGroup: jest.fn().mockReturnValue(mockMarkers),
+    geoJSON: jest.fn().mockImplementation((data, opts) => ({
+      _data: data,
+      _opts: opts,
+      setStyle: jest.fn()
+    })),
+    layerGroup: jest.fn().mockImplementation((layers = []) => makeLayerGroup(layers)),
     Control: {
       extend: jest.fn().mockImplementation((proto) => {
         function Ctrl() {}

@@ -38,6 +38,19 @@ function makeListing(overrides = {}) {
 // ── setup ────────────────────────────────────────────────────────────────────
 let mocks;
 beforeAll(() => {
+  global.WIKARTE_VIENNA_DISTRICTS = {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: { districtNumber: '1', districtName: 'Innere Stadt' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[[16.35, 48.21], [16.39, 48.21], [16.39, 48.24], [16.35, 48.24], [16.35, 48.21]]]
+        }
+      }
+    ]
+  };
   mocks = setupLeaflet();
   loadMapJs(mocks.mockMarkers);
 });
@@ -139,6 +152,74 @@ describe('escapeHtml()', () => {
 
   test('plain text is unchanged', () => {
     expect(escapeHtml('Hello Wien')).toBe('Hello Wien');
+  });
+});
+
+describe('Vienna district overlay', () => {
+  beforeEach(() => {
+    mocks.mockMap._zoom = 7;
+    mocks.mockMap._bounds = { intersects: jest.fn().mockReturnValue(false) };
+    syncViennaDistrictOverlay();
+    mocks.mockMap.addLayer.mockClear();
+    mocks.mockMap.removeLayer.mockClear();
+    L.marker.mockClear();
+  });
+
+  test('stays hidden below the district zoom threshold', () => {
+    mocks.mockMap._zoom = 10;
+    mocks.mockMap._bounds = { intersects: jest.fn().mockReturnValue(true) };
+
+    syncViennaDistrictOverlay();
+
+    expect(mocks.mockMap.addLayer).not.toHaveBeenCalled();
+  });
+
+  test('shows district outlines and labels inside Vienna at high zoom', () => {
+    mocks.mockMap._zoom = 12;
+    mocks.mockMap._bounds = { intersects: jest.fn().mockReturnValue(true) };
+
+    syncViennaDistrictOverlay();
+
+    expect(mocks.mockMap.addLayer).toHaveBeenCalledTimes(1);
+    const outlineLayer = mocks.mockMap.addLayer.mock.calls[0][0];
+    expect(outlineLayer._data).toBe(global.WIKARTE_VIENNA_DISTRICTS);
+    expect(outlineLayer._opts).toEqual(expect.objectContaining({ pane: 'wikarte-district-outlines' }));
+    expect(outlineLayer._opts.style()).toEqual(expect.objectContaining({
+      color: '#4BB8E0',
+      weight: 1.8,
+      opacity: 0.75,
+      fillOpacity: 0
+    }));
+  });
+
+  test('reduces district border opacity in dark theme', () => {
+    mocks.mockMap._zoom = 12;
+    mocks.mockMap._bounds = { intersects: jest.fn().mockReturnValue(true) };
+    syncViennaDistrictOverlay();
+
+    const outlineLayer = mocks.mockMap.addLayer.mock.calls[0][0];
+    setTheme('dark');
+
+    expect(outlineLayer.setStyle).toHaveBeenCalledWith(expect.objectContaining({
+      color: '#4BB8E0',
+      opacity: 0.3
+    }));
+    expect(getViennaDistrictOutlineStyle()).toEqual(expect.objectContaining({
+      color: '#4BB8E0',
+      opacity: 0.3
+    }));
+  });
+
+  test('removes district overlays when moving away from Vienna', () => {
+    mocks.mockMap._zoom = 12;
+    mocks.mockMap._bounds = { intersects: jest.fn().mockReturnValue(true) };
+    syncViennaDistrictOverlay();
+
+    mocks.mockMap.addLayer.mockClear();
+    mocks.mockMap._bounds = { intersects: jest.fn().mockReturnValue(false) };
+    syncViennaDistrictOverlay();
+
+    expect(mocks.mockMap.removeLayer).toHaveBeenCalledTimes(1);
   });
 });
 

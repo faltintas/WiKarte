@@ -6,10 +6,17 @@ const map         = L.map('map').setView([47.5, 14.5], 7); // Austria center
 const statusEl    = document.getElementById('status');
 const iframeToken = new URLSearchParams(location.search).get('wikarteToken') || '';
 const hoverHighlightPane = map.createPane('wikarte-hover-highlight');
+const districtOutlinePane = map.createPane('wikarte-district-outlines');
+const VIENNA_DISTRICT_OVERLAY_MIN_ZOOM = 11;
+const VIENNA_DISTRICT_BOUNDS = L.latLngBounds([48.117, 16.182], [48.323, 16.578]);
 
 if (hoverHighlightPane?.style) {
   hoverHighlightPane.style.zIndex = '750';
   hoverHighlightPane.style.pointerEvents = 'none';
+}
+if (districtOutlinePane?.style) {
+  districtOutlinePane.style.zIndex = '350';
+  districtOutlinePane.style.pointerEvents = 'none';
 }
 
 // ─── tile layers ─────────────────────────────────────────────────────────────
@@ -55,6 +62,9 @@ function setTheme(theme) {
   }
   document.body.className = isDark ? 'dark-theme' : '';
   currentThemeMode = theme;
+  if (typeof viennaDistrictLayer?.setStyle === 'function') {
+    viennaDistrictLayer.setStyle(getViennaDistrictOutlineStyle());
+  }
   if (themeControl?._updateActive) themeControl._updateActive();
 }
 
@@ -71,6 +81,17 @@ map.addLayer(markers);
 const markerMap = new Map(); // adId → Leaflet marker
 let   lastBounds = null;
 let   fitTimeoutIds = [];
+let   viennaDistrictLayer = null;
+let   viennaDistrictOverlayVisible = false;
+
+function getViennaDistrictOutlineStyle() {
+  return {
+    color: '#4BB8E0',
+    weight: 1.8,
+    opacity: currentThemeMode === 'dark' ? 0.3 : 0.75,
+    fillOpacity: 0
+  };
+}
 
 // ─── controls ─────────────────────────────────────────────────────────────────
 
@@ -248,6 +269,43 @@ const NEEDED_ATTRS = [
   'ALL_IMAGE_URLS', 'PROPERTY_TYPE', 'PRICE_FOR_DISPLAY', 'PRICE/AMOUNT'
 ];
 
+function ensureViennaDistrictLayers() {
+  const districtData = globalThis.WIKARTE_VIENNA_DISTRICTS;
+  if (!districtData?.features?.length || viennaDistrictLayer) return;
+
+  viennaDistrictLayer = L.geoJSON(districtData, {
+    pane: 'wikarte-district-outlines',
+    interactive: false,
+    style: getViennaDistrictOutlineStyle
+  });
+}
+
+function shouldShowViennaDistrictOverlay() {
+  if (!globalThis.WIKARTE_VIENNA_DISTRICTS?.features?.length) return false;
+  if (typeof map.getZoom === 'function' && map.getZoom() < VIENNA_DISTRICT_OVERLAY_MIN_ZOOM) {
+    return false;
+  }
+
+  const visibleBounds = typeof map.getBounds === 'function' ? map.getBounds() : null;
+  return !!visibleBounds?.intersects?.(VIENNA_DISTRICT_BOUNDS);
+}
+
+function syncViennaDistrictOverlay() {
+  ensureViennaDistrictLayers();
+  if (!viennaDistrictLayer) return;
+
+  const shouldShow = shouldShowViennaDistrictOverlay();
+  if (shouldShow === viennaDistrictOverlayVisible) return;
+
+  if (shouldShow) {
+    map.addLayer(viennaDistrictLayer);
+  } else {
+    map.removeLayer(viennaDistrictLayer);
+  }
+
+  viennaDistrictOverlayVisible = shouldShow;
+}
+
 // ─── listings ─────────────────────────────────────────────────────────────────
 
 function addListings(data) {
@@ -404,6 +462,7 @@ function addListings(data) {
       } else {
         map.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
       }
+      syncViennaDistrictOverlay();
     }
 
     // Three retries handle race conditions where the panel container is still
@@ -533,3 +592,6 @@ window.addEventListener('message', function (event) {
       break;
   }
 });
+
+map.on('zoomend moveend', syncViennaDistrictOverlay);
+syncViennaDistrictOverlay();
