@@ -40,6 +40,7 @@ global.setupLeaflet = function () {
     setView:       jest.fn().mockReturnThis(),
     addLayer:      jest.fn().mockReturnThis(),
     addControl:    jest.fn(),
+    createPane:    jest.fn().mockImplementation(() => ({ style: {} })),
     removeLayer:   jest.fn(),
     invalidateSize: jest.fn(),
     fitBounds:     jest.fn()

@@ -293,24 +293,22 @@ describe('highlightMarker() / unhighlightMarker()', () => {
   });
 
   test('shows clustered listing as a temporary highlighted marker', () => {
-    const fakeClusterEl = document.createElement('div');
-    const fakeCluster = { getElement: () => fakeClusterEl };
+    const fakeCluster = { getElement: () => document.createElement('div') };
     mocks.mockMarkers.getVisibleParent.mockReturnValue(fakeCluster);
     highlightMarker('123456789');
     expect(mocks.mockMap.addLayer).toHaveBeenCalledTimes(1);
     const overlayMarker = mocks.mockMap.addLayer.mock.calls[0][0];
     expect(overlayMarker._coords).toEqual([48.2, 16.3]);
     expect(overlayMarker._opts.icon.options.html).toContain('highlighted');
-    expect(fakeClusterEl.classList.contains('cluster-highlighted')).toBe(false);
+    expect(overlayMarker._opts.pane).toBe('wikarte-hover-highlight');
+    expect(overlayMarker.setZIndexOffset).toHaveBeenCalledWith(20000);
   });
 
   test('removes temporary clustered highlight marker on unhighlight', () => {
-    const fakeClusterEl = document.createElement('div');
-    const fakeCluster = { getElement: () => fakeClusterEl };
+    const fakeCluster = { getElement: () => document.createElement('div') };
     mocks.mockMarkers.getVisibleParent.mockReturnValue(fakeCluster);
     highlightMarker('123456789');
     unhighlightMarker();
     expect(mocks.mockMap.removeLayer).toHaveBeenCalledTimes(1);
-    expect(fakeClusterEl.classList.contains('cluster-highlighted')).toBe(false);
   });
 });

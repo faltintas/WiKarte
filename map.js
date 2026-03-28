@@ -5,6 +5,12 @@
 const map         = L.map('map').setView([47.5, 14.5], 7); // Austria center
 const statusEl    = document.getElementById('status');
 const iframeToken = new URLSearchParams(location.search).get('wikarteToken') || '';
+const hoverHighlightPane = map.createPane('wikarte-hover-highlight');
+
+if (hoverHighlightPane?.style) {
+  hoverHighlightPane.style.zIndex = '750';
+  hoverHighlightPane.style.pointerEvents = 'none';
+}
 
 // ─── tile layers ─────────────────────────────────────────────────────────────
 
@@ -414,7 +420,6 @@ function addListings(data) {
 
 let highlightedMarker  = null;
 let originalIcon       = null;
-let highlightedCluster = null;
 let hoverOverlayMarker = null;
 
 function createHighlightIcon(text) {
@@ -465,19 +470,18 @@ function highlightMarker(adId) {
     if (coords && labelText) {
       hoverOverlayMarker = L.marker(coords, {
         icon: createHighlightIcon(labelText),
+        pane: 'wikarte-hover-highlight',
         interactive: false,
         keyboard: false
       });
       map.addLayer(hoverOverlayMarker);
+      if (typeof hoverOverlayMarker.setZIndexOffset === 'function') {
+        hoverOverlayMarker.setZIndexOffset(20000);
+      }
       highlightedMarker = marker;
-      return;
-    }
-
-    // Fallback if we cannot create a temporary marker for some reason
-    const clusterEl = visibleParent.getElement();
-    if (clusterEl) {
-      clusterEl.classList.add('cluster-highlighted');
-      highlightedCluster = clusterEl;
+    } else {
+      highlightedMarker = null;
+      originalIcon = null;
     }
   } else {
     // Marker is directly visible — swap its icon for the highlighted variant
@@ -490,10 +494,6 @@ function unhighlightMarker() {
   if (hoverOverlayMarker) {
     map.removeLayer(hoverOverlayMarker);
     hoverOverlayMarker = null;
-  }
-  if (highlightedCluster) {
-    highlightedCluster.classList.remove('cluster-highlighted');
-    highlightedCluster = null;
   }
   if (highlightedMarker && originalIcon) {
     highlightedMarker.setIcon(originalIcon);
