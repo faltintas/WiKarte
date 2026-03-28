@@ -1,11 +1,12 @@
 {
   "name": "wikarte",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Chrome extension to show willhaben listings on a map",
   "license": "MIT",
   "scripts": {
     "test": "jest --verbose",
     "build:webstore": "sh scripts/build-webstore-package.sh",
+    "build:vienna-districts": "node scripts/build-vienna-districts.js",
     "version:bump": "node scripts/bump-version.js minor",
     "version:minor": "node scripts/bump-version.js minor",
     "version:patch": "node scripts/bump-version.js patch",
