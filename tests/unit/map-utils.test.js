@@ -257,8 +257,11 @@ describe('addListings()', () => {
 // ════════════════════════════════════════════════════════════════════════════
 describe('highlightMarker() / unhighlightMarker()', () => {
   beforeEach(() => {
+    unhighlightMarker();
     mocks.mockMarkers.clearLayers.mockClear();
     mocks.mockMarkers.addLayer.mockClear();
+    mocks.mockMap.addLayer.mockClear();
+    mocks.mockMap.removeLayer.mockClear();
     L.marker.mockClear();
     // Load a listing so markerMap has an entry
     addListings({ advertSummaryList: { advertSummary: [makeListing()] } });
@@ -289,21 +292,25 @@ describe('highlightMarker() / unhighlightMarker()', () => {
     expect(marker.setIcon).toHaveBeenCalledTimes(2);
   });
 
-  test('adds cluster-highlighted class when inside cluster', () => {
+  test('shows clustered listing as a temporary highlighted marker', () => {
     const fakeClusterEl = document.createElement('div');
     const fakeCluster = { getElement: () => fakeClusterEl };
     mocks.mockMarkers.getVisibleParent.mockReturnValue(fakeCluster);
     highlightMarker('123456789');
-    expect(fakeClusterEl.classList.contains('cluster-highlighted')).toBe(true);
+    expect(mocks.mockMap.addLayer).toHaveBeenCalledTimes(1);
+    const overlayMarker = mocks.mockMap.addLayer.mock.calls[0][0];
+    expect(overlayMarker._coords).toEqual([48.2, 16.3]);
+    expect(overlayMarker._opts.icon.options.html).toContain('highlighted');
+    expect(fakeClusterEl.classList.contains('cluster-highlighted')).toBe(false);
   });
 
-  test('removes cluster-highlighted class on unhighlight', () => {
+  test('removes temporary clustered highlight marker on unhighlight', () => {
     const fakeClusterEl = document.createElement('div');
-    fakeClusterEl.classList.add('cluster-highlighted');
     const fakeCluster = { getElement: () => fakeClusterEl };
     mocks.mockMarkers.getVisibleParent.mockReturnValue(fakeCluster);
     highlightMarker('123456789');
     unhighlightMarker();
+    expect(mocks.mockMap.removeLayer).toHaveBeenCalledTimes(1);
     expect(fakeClusterEl.classList.contains('cluster-highlighted')).toBe(false);
   });
 });

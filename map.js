@@ -407,7 +407,7 @@ function addListings(data) {
     fitTimeoutIds.push(setTimeout(fitAll, 1500));
   }
 
-  if (statusEl) statusEl.textContent = `${count} Anzeigen auf der Karte`;
+  if (statusEl) statusEl.textContent = `${count} Anzeigen auf der WiKarte`;
 }
 
 // ─── highlight ────────────────────────────────────────────────────────────────
@@ -415,6 +415,7 @@ function addListings(data) {
 let highlightedMarker  = null;
 let originalIcon       = null;
 let highlightedCluster = null;
+let hoverOverlayMarker = null;
 
 function createHighlightIcon(text) {
   return L.divIcon({
@@ -423,6 +424,28 @@ function createHighlightIcon(text) {
     iconSize: null,
     iconAnchor: [0, 0]
   });
+}
+
+function getMarkerLabelText(icon) {
+  if (!icon?.options?.html) return '';
+  _escapeDiv.innerHTML = icon.options.html;
+  return _escapeDiv.textContent || '';
+}
+
+function getMarkerCoords(marker) {
+  if (typeof marker?.getLatLng === 'function') {
+    const latLng = marker.getLatLng();
+    if (Array.isArray(latLng)) return latLng;
+    if (latLng && typeof latLng.lat === 'number' && typeof latLng.lng === 'number') {
+      return [latLng.lat, latLng.lng];
+    }
+  }
+
+  if (Array.isArray(marker?._coords) && marker._coords.length >= 2) {
+    return marker._coords;
+  }
+
+  return null;
 }
 
 function highlightMarker(adId) {
@@ -436,7 +459,21 @@ function highlightMarker(adId) {
   const visibleParent = markers.getVisibleParent(marker);
 
   if (visibleParent && visibleParent !== marker) {
-    // Marker is inside a cluster — highlight the cluster element
+    const coords = getMarkerCoords(marker);
+    const labelText = getMarkerLabelText(originalIcon);
+
+    if (coords && labelText) {
+      hoverOverlayMarker = L.marker(coords, {
+        icon: createHighlightIcon(labelText),
+        interactive: false,
+        keyboard: false
+      });
+      map.addLayer(hoverOverlayMarker);
+      highlightedMarker = marker;
+      return;
+    }
+
+    // Fallback if we cannot create a temporary marker for some reason
     const clusterEl = visibleParent.getElement();
     if (clusterEl) {
       clusterEl.classList.add('cluster-highlighted');
@@ -444,14 +481,16 @@ function highlightMarker(adId) {
     }
   } else {
     // Marker is directly visible — swap its icon for the highlighted variant
-    _escapeDiv.innerHTML = originalIcon.options.html;
-    const text = _escapeDiv.textContent || '';
-    marker.setIcon(createHighlightIcon(text));
+    marker.setIcon(createHighlightIcon(getMarkerLabelText(originalIcon)));
     marker.setZIndexOffset(10000);
   }
 }
 
 function unhighlightMarker() {
+  if (hoverOverlayMarker) {
+    map.removeLayer(hoverOverlayMarker);
+    hoverOverlayMarker = null;
+  }
   if (highlightedCluster) {
     highlightedCluster.classList.remove('cluster-highlighted');
     highlightedCluster = null;

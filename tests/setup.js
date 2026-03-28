@@ -25,6 +25,7 @@ global.setupLeaflet = function () {
     setIcon:   jest.fn(function (icon) { this._icon = icon; }),
     setZIndexOffset: jest.fn(),
     getIcon:   jest.fn(function () { return this._icon; }),
+    getLatLng: jest.fn(function () { return this._coords; }),
     getElement: jest.fn().mockReturnValue(null)
   });
 
