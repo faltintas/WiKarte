@@ -1,4 +1,7 @@
 node_modules/
 .DS_Store
+**/.DS_Store
 .claude/
 .wikarte-bump-type
+dist/
+screenshots/
