@@ -29,7 +29,12 @@ WiKarte does not use analytics, advertising trackers, or third-party telemetry.
 
 ## Third-party requests
 
-WiKarte loads map tiles from CARTO's public tile service and uses OpenStreetMap attribution data as part of the map display.
+WiKarte loads map tiles only from the currently selected basemap provider:
+
+- CARTO for Street light and Street dark
+- Esri for Satellite
+
+OpenStreetMap attribution data is shown as part of the Street map display.
 
 When listings contain images hosted by willhaben infrastructure, those images may be loaded in the map popup just as they are loaded on the underlying willhaben page.
 

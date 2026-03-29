@@ -111,23 +111,27 @@ Moving the mouse over a listing card in the willhaben page highlights the corres
 
 ---
 
-## 9. Light and Dark Theme
+## 9. Map Modes
 
 ### Automatic sync
 WiKarte observes willhaben's `data-wh-theme` attribute on the `<html>` element via a `MutationObserver`. When willhaben switches theme (via its own toggle), WiKarte's map switches instantly to match.
 
-**Light theme** — CARTO Voyager tiles (colourful, readable road map)
-**Dark theme** — CARTO Dark Matter tiles (dark background, white labels)
+**Street light** — CARTO Voyager tiles (colourful, readable road map)  
+**Street dark** — CARTO Dark Matter tiles (dark background, white labels)  
+**Satellite** — Esri World Imagery tiles
 
-The popup and status bar also switch styling between light and dark modes.
+The popup, marker tags, and status bar switch styling between light and dark modes while you stay on Street view.
 
-### Manual override
-The map toolbar contains two buttons — a sun (☀) and a moon (☽):
-- Click **sun** to force the map to light theme
-- Click **moon** to force the map to dark theme
-- The active button is highlighted in blue
+### Toolbar buttons
+The map toolbar contains three stacked image buttons directly under the reset button:
+- **Street light**
+- **Street dark**
+- **Satellite**
 
-This override applies to the map panel only and does not change willhaben's own theme.
+Clicking any of them switches the base layer immediately.
+
+### Satellite behaviour
+Satellite mode deliberately keeps marker tags, wishlisted markers, and popup cards in the light style even if Street dark mode was selected beforehand. Austria and Vienna border overlays also return to their full non-transparent opacity on Satellite.
 
 ---
 
@@ -204,6 +208,6 @@ WiKarte intercepts outgoing `fetch` and `XMLHttpRequest` calls made by willhaben
 ## 16. Data Isolation and Privacy
 
 - WiKarte does not send any listing data, user data, or behavioural data to any external server
-- The only external network requests are map tile fetches to CARTO's CDN, which is standard for any Leaflet-based map
+- The only external network requests are map tile fetches to the selected basemap provider: CARTO for Street view and Esri for Satellite
 - The extension only activates on `*.willhaben.at` domains (as declared in `manifest.json`)
 - The extension does not request optional runtime permissions

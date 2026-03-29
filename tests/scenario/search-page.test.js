@@ -224,6 +224,40 @@ describe('Scenario: Search results page', () => {
     expect(firstMarker._opts.icon.options.html).toContain('wishlisted');
   });
 
+  test('does not mark a listing as wishlisted from unrelated wishlist-like controls', async () => {
+    const unrelatedButton = document.createElement('button');
+    unrelatedButton.setAttribute('aria-pressed', 'true');
+    unrelatedButton.setAttribute('aria-label', 'Zur Merkliste hinzufügen');
+    unrelatedButton.setAttribute('data-testid', 'search-filter-save-ad-999999999');
+    document.body.appendChild(unrelatedButton);
+
+    loadBoth();
+    await new Promise(r => setTimeout(r, 100));
+
+    const targetMarker = mocks.mockMarkers._layers[0];
+    expect(targetMarker._opts.icon.options.html).not.toContain('wishlisted');
+  });
+
+  test('prefers the listing\'s current save button state when duplicate controls exist', async () => {
+    const staleControl = document.createElement('button');
+    staleControl.setAttribute('aria-pressed', 'true');
+    staleControl.setAttribute('aria-label', 'Anzeige Merken');
+    staleControl.setAttribute('data-testid', `search-result-entry-save-ad-${THIRTY_LISTINGS[0].id}`);
+    document.body.appendChild(staleControl);
+
+    const liveControl = document.createElement('button');
+    liveControl.setAttribute('aria-pressed', 'false');
+    liveControl.setAttribute('aria-label', 'Anzeige Merken');
+    liveControl.setAttribute('data-testid', `search-result-entry-save-ad-${THIRTY_LISTINGS[0].id}`);
+    document.body.appendChild(liveControl);
+
+    loadBoth();
+    await new Promise(r => setTimeout(r, 100));
+
+    const targetMarker = mocks.mockMarkers._layers[0];
+    expect(targetMarker._opts.icon.options.html).not.toContain('wishlisted');
+  });
+
   test('wishlist toggle updates the marker immediately after the button state changes', async () => {
     const listingCard = document.createElement('article');
 

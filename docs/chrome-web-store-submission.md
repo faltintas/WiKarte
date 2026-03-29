@@ -14,6 +14,7 @@ Output:
 
 ```text
 dist/wikarte-webstore.zip
+dist/wikarte-webstore-v<version>.zip
 ```
 
 The ZIP keeps `manifest.json` at the root as required by Chrome Web Store upload guidance and excludes repository-only files.
@@ -40,7 +41,7 @@ Features:
 - Marks wishlisted items directly on the map and updates them live when you save or remove them
 - Opens popups with image, price, details, address, and direct listing link
 - Automatically fits the visible listings on the map
-- Supports light and dark themes
+- Offers Street light, Street dark, and Satellite map modes
 - Adds subtle Austria and Vienna district outlines for easier orientation
 - Uses postcode fallback for listings without explicit coordinates
 

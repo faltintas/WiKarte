@@ -81,3 +81,16 @@ git push origin v1.12.0
 ```
 
 This workflow does not create a GitHub Release automatically. It only creates the Git tag so you can decide later if and when to publish a GitHub release from it.
+
+## Web Store package output
+
+Build the Chrome Web Store package with:
+
+```bash
+npm run build:webstore
+```
+
+This produces:
+
+- `dist/wikarte-webstore.zip`
+- `dist/wikarte-webstore-v<version>.zip`

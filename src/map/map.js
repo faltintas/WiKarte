@@ -61,7 +61,6 @@ let currentTileLayer = null;
 // ─── theme ────────────────────────────────────────────────────────────────────
 
 let currentThemeMode = 'light';
-let layerControl = null;
 
 function syncUiModeClasses() {
   document.body.classList.toggle('dark-theme', currentThemeMode === 'dark');
@@ -97,7 +96,6 @@ function setTheme(theme) {
   if (typeof viennaDistrictLayer?.setStyle === 'function') {
     viennaDistrictLayer.setStyle(getViennaDistrictOutlineStyle());
   }
-  if (layerControl?._updateUi) layerControl._updateUi();
 }
 
 function setBaseLayer(layerId) {
@@ -111,7 +109,6 @@ function setBaseLayer(layerId) {
   if (typeof viennaDistrictLayer?.setStyle === 'function') {
     viennaDistrictLayer.setStyle(getViennaDistrictOutlineStyle());
   }
-  if (layerControl?._updateUi) layerControl._updateUi();
 }
 
 // ─── marker cluster ───────────────────────────────────────────────────────────
@@ -184,8 +181,6 @@ const LayerControl = L.Control.extend({
       { id: 'dark', title: 'Streetmap dark', previewClass: 'dark' },
       { id: 'satellite', title: 'Satellite', previewClass: 'satellite' }
     ];
-    const buttons = new Map();
-
     buttonDefs.forEach(({ id, title, previewClass }) => {
       const button = L.DomUtil.create('a', `reset-view-btn wikarte-layer-btn wikarte-layer-btn-${previewClass}`, container);
       button.href = '#';
@@ -210,24 +205,13 @@ const LayerControl = L.Control.extend({
 
         setBaseLayer('satellite');
       });
-
-      buttons.set(id, button);
     });
 
-    function updateUi() {
-      buttons.get('light')?.classList.toggle('active', currentBaseLayer === 'street' && currentThemeMode === 'light');
-      buttons.get('dark')?.classList.toggle('active', currentBaseLayer === 'street' && currentThemeMode === 'dark');
-      buttons.get('satellite')?.classList.toggle('active', currentBaseLayer === 'satellite');
-    }
-
     L.DomEvent.disableClickPropagation(container);
-    updateUi();
-    this._updateUi = updateUi;
     return container;
   }
 });
-layerControl = new LayerControl();
-map.addControl(layerControl);
+map.addControl(new LayerControl());
 syncUiModeClasses();
 syncActiveTileLayer();
 

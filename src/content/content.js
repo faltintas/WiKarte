@@ -351,6 +351,18 @@
     return parts.join(' ').toLowerCase();
   }
 
+  function hasExplicitWishlistControlId(el) {
+    if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+    const testId = el.getAttribute('data-testid') || el.getAttribute('data-test-id') || '';
+    return /(?:^|-)save-ad-\d{5,}$/.test(testId);
+  }
+
+  function hasWishlistControlLabel(el) {
+    const descriptor = getWishlistDescriptor(el);
+    if (!descriptor) return false;
+    return /(anzeige merken|merkliste|wunschliste|wishlist|watchlist|bookmark|favorite|favourite|saved?)/.test(descriptor);
+  }
+
   function getWishlistedIdFromControl(el) {
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return null;
 
@@ -386,17 +398,20 @@
 
   function isWishlistRelatedControl(el) {
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
-    const testId = el.getAttribute('data-testid') || el.getAttribute('data-test-id') || '';
-    if (/(?:^|-)save-ad-\d{5,}$/.test(testId)) return true;
-    return /(merk|wunschliste|wishlist|watchlist|bookmark|favorite|favourite|saved?)/.test(getWishlistDescriptor(el));
+    if (!getWishlistedIdFromControl(el)) return false;
+    return hasExplicitWishlistControlId(el) || hasWishlistControlLabel(el);
   }
 
   function isWishlistedControl(el) {
-    const descriptor = getWishlistDescriptor(el);
-    if (!descriptor) return false;
-    if (!/(merk|wunschliste|wishlist|watchlist|bookmark|favorite|favourite|saved?)/.test(descriptor)) {
+    if (!getWishlistedIdFromControl(el)) {
       return false;
     }
+
+    if (!hasExplicitWishlistControlId(el) && !hasWishlistControlLabel(el)) {
+      return false;
+    }
+
+    const descriptor = getWishlistDescriptor(el);
 
     return (
       el.getAttribute('aria-pressed') === 'true' ||
@@ -407,6 +422,31 @@
       el.checked === true ||
       /(entfernen|remove|saved|gemerkt|gespeichert|bereits gemerkt|in der merkliste)/.test(descriptor)
     );
+  }
+
+  function getWishlistStateForListingId(adId) {
+    if (!adId) return false;
+    if (isMerklistePage()) return true;
+
+    const exactControls = Array.from(
+      document.querySelectorAll(`[data-testid$="save-ad-${adId}"], [data-test-id$="save-ad-${adId}"]`)
+    );
+
+    if (exactControls.length) {
+      for (let i = exactControls.length - 1; i >= 0; i -= 1) {
+        if (isWishlistedControl(exactControls[i])) return true;
+        if (
+          exactControls[i].getAttribute('aria-pressed') === 'false' ||
+          exactControls[i].getAttribute('aria-checked') === 'false' ||
+          exactControls[i].checked === false
+        ) {
+          return false;
+        }
+      }
+      return false;
+    }
+
+    return collectWishlistedIds().has(adId);
   }
 
   function collectWishlistedIds() {
@@ -426,16 +466,12 @@
     const summaries = data?.advertSummaryList?.advertSummary ?? data?.rows;
     if (!Array.isArray(summaries)) return data;
 
-    const wishlistedIds = isMerklistePage() || data?.isMerkliste
-      ? null
-      : collectWishlistedIds();
-
     summaries.forEach((item) => {
       const itemId = getListingIdFromItem(item);
       item.wikarteWishlisted = Boolean(
         isMerklistePage() ||
         data?.isMerkliste ||
-        (itemId && wishlistedIds?.has(itemId))
+        getWishlistStateForListingId(itemId)
       );
     });
 
@@ -444,10 +480,9 @@
 
   function syncWishlistStateForListing(adId) {
     if (!adId) return;
-    const wishlistedIds = isMerklistePage() ? null : collectWishlistedIds();
     postToMap('WIKARTE_WISHLIST_STATE', {
       adId,
-      isWishlisted: Boolean(isMerklistePage() || wishlistedIds?.has(adId))
+      isWishlisted: Boolean(getWishlistStateForListingId(adId))
     });
   }
 

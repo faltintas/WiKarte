@@ -133,10 +133,10 @@ connect-src 'none';                    ← src/map/map.js makes no network reque
 | Area | Implementation |
 |---|---|
 | Map initialisation | `L.map('map').setView([47.5, 14.5], 7)` — centred on Austria |
-| Tile layers | `lightTiles` (CARTO Voyager) and `darkTiles` (CARTO Dark Matter); swapped by `setTheme()` |
+| Tile layers | `lightTiles` (CARTO Voyager), `darkTiles` (CARTO Dark Matter), and `satelliteTiles` (Esri World Imagery); Street view uses `setTheme()`, Satellite uses `setBaseLayer()` |
 | Clustering | `L.markerClusterGroup({ maxClusterRadius: 40, spiderfyOnMaxZoom: true, showCoverageOnHover: false })` |
 | Marker storage | `markerMap: Map<string, L.Marker>` — keyed by ad ID (from `item.id` and numeric ID extracted from SEO URL) |
-| Custom controls | `ResetControl` (re-fits `lastBounds`) and `ThemeControl` (sun/moon toggle), both `position: 'topleft'` |
+| Custom controls | `ResetControl` (re-fits `lastBounds`) and `LayerControl` (stacked image buttons for Street light, Street dark, and Satellite), both `position: 'topleft'` |
 | Geographic overlays | Austria outline always visible; Vienna district layer shown at higher zoom around Vienna |
 | Highlight state | Module-level state for `highlightedMarker`, `originalIcon`, and `hoverOverlayMarker` for clustered-item pop-outs |
 | Message router | `switch` on `event.data.type` for the current `WIKARTE_*` message types |
@@ -156,6 +156,7 @@ connect-src 'none';                    ← src/map/map.js makes no network reque
 10. Applies `wikarteWishlisted` state to the marker icon when available
 11. Registers marker under all known numeric IDs for the listing
 12. Fits map bounds at 100 ms, 500 ms, 1500 ms to handle panel sizing race conditions
+13. Uses `closeButton: false` so popup spacing stays visually balanced
 
 **`highlightMarker(adId)` detail:**
 1. Calls `unhighlightMarker()` to clear any previous state
@@ -213,6 +214,13 @@ All messages pass through `window.postMessage`. The message type strings are nam
 
 ### Content Security Policy
 The map iframe declares a strict CSP that blocks inline scripts and all external connections.
+
+### Tile providers
+- Street light: CARTO Voyager
+- Street dark: CARTO Dark Matter
+- Satellite: Esri World Imagery
+
+The iframe still uses `connect-src 'none'` because Leaflet tile requests are image requests, not script/XHR/fetch calls.
 
 ---
 

@@ -15,12 +15,14 @@ function readVersion() {
 }
 
 function runGit(args, options = {}) {
-  return execFileSync('git', args, {
+  const result = execFileSync('git', args, {
     cwd: rootDir,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
     ...options
-  }).trim();
+  });
+
+  return typeof result === 'string' ? result.trim() : '';
 }
 
 function ensureCleanWorktree() {
