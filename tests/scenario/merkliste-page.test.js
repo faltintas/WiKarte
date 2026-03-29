@@ -76,10 +76,10 @@ function setNextData(data) {
 }
 
 function loadBoth() {
-  const mapSrc = fs.readFileSync(path.join(__dirname, '../../map.js'), 'utf8');
+  const mapSrc = fs.readFileSync(path.join(__dirname, '../../src/map/map.js'), 'utf8');
   (0, eval)(mapSrc);
 
-  const contentSrc = fs.readFileSync(path.join(__dirname, '../../content.js'), 'utf8');
+  const contentSrc = fs.readFileSync(path.join(__dirname, '../../src/content/content.js'), 'utf8');
   (0, eval)(contentSrc);
 
   const iframe = document.querySelector('#wikarte-panel iframe');

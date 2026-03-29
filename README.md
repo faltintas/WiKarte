@@ -44,3 +44,9 @@ WiKarte reads listing data already present on the willhaben.at page you are view
 ## License
 
 MIT. See [LICENSE](./LICENSE) and [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+
+## Documentation
+
+- Functional overview: [docs/README.functional.md](./docs/README.functional.md)
+- Technical architecture: [docs/README.technical.md](./docs/README.technical.md)
+- Developer notes: [docs/README.dev.md](./docs/README.dev.md)

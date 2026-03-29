@@ -5,7 +5,7 @@ const https = require('https');
 const path = require('path');
 
 const METADATA_URL = 'https://www.geoboundaries.org/api/current/gbOpen/AUT/ADM0/';
-const OUTPUT_PATH = path.join(__dirname, '..', 'austria-border.js');
+const OUTPUT_PATH = path.join(__dirname, '..', 'src', 'data', 'austria-border.js');
 const SIMPLIFY_TOLERANCE = 0;
 
 function fetchText(url, depth = 0) {

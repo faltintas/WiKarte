@@ -9,15 +9,11 @@ ZIP_PATH="$DIST_DIR/wikarte-webstore.zip"
 
 INCLUDE_PATHS="
 manifest.json
-content.js
-page-intercept.js
-map.html
-map.js
-styles.css
-postcodes.js
-icon48.png
-icon128.png
-lib
+src/content
+src/map
+src/data
+src/vendor
+assets/icons
 LICENSE
 THIRD_PARTY_NOTICES.md
 "

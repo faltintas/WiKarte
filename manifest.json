@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WiKarte",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "Shows willhaben.at listings on an interactive map side panel",
   "content_scripts": [
     {
@@ -9,7 +9,7 @@
         "*://*.willhaben.at/*"
       ],
       "js": [
-        "page-intercept.js"
+        "src/content/page-intercept.js"
       ],
       "run_at": "document_start",
       "world": "MAIN"
@@ -19,10 +19,10 @@
         "*://*.willhaben.at/*"
       ],
       "js": [
-        "content.js"
+        "src/content/content.js"
       ],
       "css": [
-        "styles.css"
+        "src/content/styles.css"
       ],
       "run_at": "document_idle"
     }
@@ -30,11 +30,12 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "map.html",
-        "lib/*",
-        "postcodes.js",
-        "austria-border.js",
-        "vienna-districts.js"
+        "src/map/map.html",
+        "src/vendor/*",
+        "src/vendor/images/*",
+        "src/data/postcodes.js",
+        "src/data/austria-border.js",
+        "src/data/vienna-districts.js"
       ],
       "matches": [
         "*://*.willhaben.at/*"
@@ -42,7 +43,7 @@
     }
   ],
   "icons": {
-    "48": "icon48.png",
-    "128": "icon128.png"
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
   }
 }

@@ -37,7 +37,7 @@ const SEARCH_DATA = {
 };
 
 function loadContent() {
-  const src = fs.readFileSync(path.join(__dirname, '../../content.js'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '../../src/content/content.js'), 'utf8');
   (0, eval)(src);
 }
 

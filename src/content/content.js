@@ -143,7 +143,7 @@
 
     iframeToken = makeSessionToken();
     mapIframe = document.createElement('iframe');
-    mapIframe.src = `${chrome.runtime.getURL('map.html')}?wikarteToken=${encodeURIComponent(iframeToken)}`;
+    mapIframe.src = `${chrome.runtime.getURL('src/map/map.html')}?wikarteToken=${encodeURIComponent(iframeToken)}`;
     mapOrigin = new URL(mapIframe.src).origin;
     mapIframe.allow = 'fullscreen';
 

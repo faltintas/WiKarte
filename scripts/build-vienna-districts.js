@@ -6,7 +6,7 @@ const path = require('path');
 
 const SOURCE_URL =
   'https://data.wien.gv.at/daten/geo?service=WFS&request=GetFeature&version=1.1.0&typeName=ogdwien:BEZIRKSGRENZEOGD&srsName=EPSG:4326&outputFormat=json';
-const OUTPUT_PATH = path.join(__dirname, '..', 'vienna-districts.js');
+const OUTPUT_PATH = path.join(__dirname, '..', 'src', 'data', 'vienna-districts.js');
 const SIMPLIFY_TOLERANCE = 0.00005;
 
 function downloadJson(url) {

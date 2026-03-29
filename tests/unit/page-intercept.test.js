@@ -1,5 +1,5 @@
 /**
- * Unit tests for page-intercept.js
+ * Unit tests for src/content/page-intercept.js
  * Verifies that fetch / XHR / history are intercepted and
  * correct window.postMessage events are dispatched.
  */
@@ -11,7 +11,7 @@ const path = require('path');
 // ── helpers ──────────────────────────────────────────────────────────────────
 function loadPageIntercept() {
   const src = fs.readFileSync(
-    path.join(__dirname, '../../page-intercept.js'), 'utf8'
+    path.join(__dirname, '../../src/content/page-intercept.js'), 'utf8'
   );
   (0, eval)(src);
 }

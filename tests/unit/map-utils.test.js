@@ -1,5 +1,5 @@
 /**
- * Unit tests for map.js utility functions:
+ * Unit tests for src/map/map.js utility functions:
  * shortPrice, formatPrice, escapeHtml, addListings, highlight/unhighlight
  */
 
@@ -10,7 +10,7 @@ const path = require('path');
 // ── helpers ─────────────────────────────────────────────────────────────────
 function loadMapJs(mockMarkers) {
   document.body.innerHTML = '<div id="map"></div><div id="status"></div>';
-  const src = fs.readFileSync(path.join(__dirname, '../../map.js'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '../../src/map/map.js'), 'utf8');
   // Expose globals created by the script (function decls, vars)
   (0, eval)(src);
 }
@@ -238,16 +238,16 @@ describe('Vienna district overlay', () => {
 
 describe('Austria border overlay', () => {
   test('loads the Austria border asset into the map iframe', () => {
-    const mapHtml = fs.readFileSync(path.join(__dirname, '../../map.html'), 'utf8');
+    const mapHtml = fs.readFileSync(path.join(__dirname, '../../src/map/map.html'), 'utf8');
     const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '../../manifest.json'), 'utf8'));
 
-    expect(mapHtml).toContain('<script src="austria-border.js"></script>');
-    expect(manifest.web_accessible_resources[0].resources).toContain('austria-border.js');
+    expect(mapHtml).toContain('<script src="../data/austria-border.js"></script>');
+    expect(manifest.web_accessible_resources[0].resources).toContain('src/data/austria-border.js');
   });
 
   test('wires Austria outline styling into the map script', () => {
-    const mapSource = fs.readFileSync(path.join(__dirname, '../../map.js'), 'utf8');
-    const borderAsset = fs.readFileSync(path.join(__dirname, '../../austria-border.js'), 'utf8');
+    const mapSource = fs.readFileSync(path.join(__dirname, '../../src/map/map.js'), 'utf8');
+    const borderAsset = fs.readFileSync(path.join(__dirname, '../../src/data/austria-border.js'), 'utf8');
 
     expect(mapSource).toContain("const austriaOutlinePane = map.createPane('wikarte-austria-outline');");
     expect(mapSource).toContain('function getAustriaBorderStyle()');

@@ -1,5 +1,5 @@
 /**
- * Unit tests for content.js
+ * Unit tests for src/content/content.js
  * Tests DOM creation, message handling, theme detection,
  * isListPage / isMerklistePage logic, and extractListingsFromNextData.
  */
@@ -22,7 +22,7 @@ function setNextData(data) {
 
 function loadContent() {
   const src = fs.readFileSync(
-    path.join(__dirname, '../../content.js'), 'utf8'
+    path.join(__dirname, '../../src/content/content.js'), 'utf8'
   );
   (0, eval)(src);
 }
@@ -107,7 +107,7 @@ describe('Panel and toggle creation', () => {
     const panel = document.getElementById('wikarte-panel');
     const iframe = panel?.querySelector('iframe');
     expect(iframe?.src).toContain('chrome-extension://');
-    expect(iframe?.src).toContain('map.html');
+    expect(iframe?.src).toContain('src/map/map.html');
   });
 
   test('toggle button contains SVG map icon', () => {

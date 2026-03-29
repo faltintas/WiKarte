@@ -52,7 +52,7 @@ beforeEach(() => {
   // Leaflet mocks
   mocks = setupLeaflet();
 
-  // DOM — #map and #status are needed by map.js at load time
+  // DOM — #map and #status are needed by src/map/map.js at load time
   document.body.innerHTML  = '<div id="map"></div><div id="status"></div>';
   document.head.innerHTML  = '';
   document.documentElement.removeAttribute('data-wh-theme');
@@ -74,12 +74,12 @@ beforeEach(() => {
 });
 
 function loadBoth() {
-  // Load map.js first (iframe context, but we simulate it inline)
-  const mapSrc = fs.readFileSync(path.join(__dirname, '../../map.js'), 'utf8');
+  // Load src/map/map.js first (iframe context, but we simulate it inline)
+  const mapSrc = fs.readFileSync(path.join(__dirname, '../../src/map/map.js'), 'utf8');
   (0, eval)(mapSrc);
 
-  // Load content.js
-  const contentSrc = fs.readFileSync(path.join(__dirname, '../../content.js'), 'utf8');
+  // Load src/content/content.js
+  const contentSrc = fs.readFileSync(path.join(__dirname, '../../src/content/content.js'), 'utf8');
   (0, eval)(contentSrc);
 
   // Wire iframe's contentWindow postMessage → spy AND process via addListings
@@ -88,7 +88,7 @@ function loadBoth() {
     get: () => ({
       postMessage: (msg) => {
         postSpy(msg);
-        // Simulate map.js receiving the message
+        // Simulate src/map/map.js receiving the message
         if (msg.type === 'WIKARTE_LISTINGS') addListings(msg.data);
         if (msg.type === 'WIKARTE_INVALIDATE') {
           mocks.mockMap.invalidateSize();

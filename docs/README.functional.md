@@ -162,7 +162,7 @@ On Merkliste pages, fetch interception ignores API calls that are not `_next/dat
 WiKarte resolves each listing's map position using two strategies in order:
 
 1. **Explicit coordinates** — the `COORDINATES` attribute (`lat,lng` string) when present
-2. **Postcode lookup** — if no coordinates are available, the listing's `POSTCODE` attribute is looked up in the bundled `postcodes.js` table covering all Austrian postcodes
+2. **Postcode lookup** — if no coordinates are available, the listing's `POSTCODE` attribute is looked up in the bundled `src/data/postcodes.js` table covering all Austrian postcodes
 
 Listings that cannot be resolved by either strategy are silently skipped and are not placed on the map.
 
