@@ -6,6 +6,7 @@ const map         = L.map('map').setView([47.5, 14.5], 7); // Austria center
 const statusEl    = document.getElementById('status');
 const iframeToken = new URLSearchParams(location.search).get('wikarteToken') || '';
 const hoverHighlightPane = map.createPane('wikarte-hover-highlight');
+const austriaOutlinePane = map.createPane('wikarte-austria-outline');
 const districtOutlinePane = map.createPane('wikarte-district-outlines');
 const VIENNA_DISTRICT_OVERLAY_MIN_ZOOM = 11;
 const VIENNA_DISTRICT_BOUNDS = L.latLngBounds([48.117, 16.182], [48.323, 16.578]);
@@ -13,6 +14,10 @@ const VIENNA_DISTRICT_BOUNDS = L.latLngBounds([48.117, 16.182], [48.323, 16.578]
 if (hoverHighlightPane?.style) {
   hoverHighlightPane.style.zIndex = '750';
   hoverHighlightPane.style.pointerEvents = 'none';
+}
+if (austriaOutlinePane?.style) {
+  austriaOutlinePane.style.zIndex = '325';
+  austriaOutlinePane.style.pointerEvents = 'none';
 }
 if (districtOutlinePane?.style) {
   districtOutlinePane.style.zIndex = '350';
@@ -62,6 +67,9 @@ function setTheme(theme) {
   }
   document.body.className = isDark ? 'dark-theme' : '';
   currentThemeMode = theme;
+  if (typeof austriaBorderLayer?.setStyle === 'function') {
+    austriaBorderLayer.setStyle(getAustriaBorderStyle());
+  }
   if (typeof viennaDistrictLayer?.setStyle === 'function') {
     viennaDistrictLayer.setStyle(getViennaDistrictOutlineStyle());
   }
@@ -81,8 +89,18 @@ map.addLayer(markers);
 const markerMap = new Map(); // adId → Leaflet marker
 let   lastBounds = null;
 let   fitTimeoutIds = [];
+let   austriaBorderLayer = null;
 let   viennaDistrictLayer = null;
 let   viennaDistrictOverlayVisible = false;
+
+function getAustriaBorderStyle() {
+  return {
+    color: '#4BB8E0',
+    weight: 1.8,
+    opacity: currentThemeMode === 'dark' ? 0.3 : 0.75,
+    fillOpacity: 0
+  };
+}
 
 function getViennaDistrictOutlineStyle() {
   return {
@@ -268,6 +286,18 @@ const NEEDED_ATTRS = [
   'SEO_URL', 'ROOMS', 'NUMBER_OF_ROOMS', 'BODY_DYN',
   'ALL_IMAGE_URLS', 'PROPERTY_TYPE', 'PRICE_FOR_DISPLAY', 'PRICE/AMOUNT'
 ];
+
+function ensureAustriaBorderLayer() {
+  const borderData = globalThis.WIKARTE_AUSTRIA_BORDER;
+  if (!borderData?.geometry || austriaBorderLayer) return;
+
+  austriaBorderLayer = L.geoJSON(borderData, {
+    pane: 'wikarte-austria-outline',
+    interactive: false,
+    style: getAustriaBorderStyle
+  });
+  map.addLayer(austriaBorderLayer);
+}
 
 function ensureViennaDistrictLayers() {
   const districtData = globalThis.WIKARTE_VIENNA_DISTRICTS;
@@ -594,4 +624,5 @@ window.addEventListener('message', function (event) {
 });
 
 map.on('zoomend moveend', syncViennaDistrictOverlay);
+ensureAustriaBorderLayer();
 syncViennaDistrictOverlay();

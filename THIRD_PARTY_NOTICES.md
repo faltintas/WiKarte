@@ -18,6 +18,14 @@ WiKarte bundles the following third-party libraries:
 
 Map tiles are loaded at runtime from CARTO basemaps and include attribution in the UI.
 
+## Austria national border
+
+- Dataset: geoBoundaries ADM0 (Austria)
+- Source: https://www.geoboundaries.org/
+- File: `austria-border.js`
+- License: CC BY-SA 2.0
+- Attribution: Federal Office for Metrology and Survey, Austria, via geoBoundaries
+
 ## Vienna district boundaries
 
 - Dataset: Bezirksgrenzen Wien

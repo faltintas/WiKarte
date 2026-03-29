@@ -38,7 +38,18 @@ function makeListing(overrides = {}) {
 // ── setup ────────────────────────────────────────────────────────────────────
 let mocks;
 beforeAll(() => {
-  global.WIKARTE_VIENNA_DISTRICTS = {
+  const austriaBorder = {
+    type: 'Feature',
+    properties: { name: 'Austria', iso3: 'AUT' },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[[9.5, 46.3], [17.2, 46.3], [17.2, 49.1], [9.5, 49.1], [9.5, 46.3]]]
+    }
+  };
+  global.WIKARTE_AUSTRIA_BORDER = austriaBorder;
+  window.WIKARTE_AUSTRIA_BORDER = austriaBorder;
+
+  const viennaDistricts = {
     type: 'FeatureCollection',
     features: [
       {
@@ -51,6 +62,8 @@ beforeAll(() => {
       }
     ]
   };
+  global.WIKARTE_VIENNA_DISTRICTS = viennaDistricts;
+  window.WIKARTE_VIENNA_DISTRICTS = viennaDistricts;
   mocks = setupLeaflet();
   loadMapJs(mocks.mockMarkers);
 });
@@ -220,6 +233,26 @@ describe('Vienna district overlay', () => {
     syncViennaDistrictOverlay();
 
     expect(mocks.mockMap.removeLayer).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Austria border overlay', () => {
+  test('loads the Austria border asset into the map iframe', () => {
+    const mapHtml = fs.readFileSync(path.join(__dirname, '../../map.html'), 'utf8');
+    const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '../../manifest.json'), 'utf8'));
+
+    expect(mapHtml).toContain('<script src="austria-border.js"></script>');
+    expect(manifest.web_accessible_resources[0].resources).toContain('austria-border.js');
+  });
+
+  test('wires Austria outline styling into the map script', () => {
+    const mapSource = fs.readFileSync(path.join(__dirname, '../../map.js'), 'utf8');
+    const borderAsset = fs.readFileSync(path.join(__dirname, '../../austria-border.js'), 'utf8');
+
+    expect(mapSource).toContain("const austriaOutlinePane = map.createPane('wikarte-austria-outline');");
+    expect(mapSource).toContain('function getAustriaBorderStyle()');
+    expect(mapSource).toContain('ensureAustriaBorderLayer();');
+    expect(borderAsset).toContain('window.WIKARTE_AUSTRIA_BORDER = ');
   });
 });
 
