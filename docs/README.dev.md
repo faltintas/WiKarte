@@ -52,3 +52,32 @@ npm run version:minor
 npm run version:patch
 npm run version:major
 ```
+
+## Release tags
+
+Version bumps and release tags are intentionally separate.
+
+- Normal commits keep updating `package.json` and `manifest.json`
+- A Git tag is created only when you explicitly decide to cut a release
+
+Create an annotated release tag from the current version:
+
+```bash
+npm run release:tag
+```
+
+That creates a tag like `v1.12.0` from the current `package.json` version.
+
+Guardrails:
+
+- the worktree must be clean
+- the current branch must be `main`
+- the tag must not already exist
+
+After the tag is created, push it manually:
+
+```bash
+git push origin v1.12.0
+```
+
+This workflow does not create a GitHub Release automatically. It only creates the Git tag so you can decide later if and when to publish a GitHub release from it.
