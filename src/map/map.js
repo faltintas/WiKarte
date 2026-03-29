@@ -1,8 +1,8 @@
 // WiKarte — Map Script
 // Runs inside the extension iframe (map.html). Renders listings as clustered
-// price-tag markers on a Leaflet map and handles highlight/theme messages.
+// price-tag markers on a Leaflet map and handles highlight/theme/layer messages.
 
-const map         = L.map('map').setView([47.5, 14.5], 7); // Austria center
+const map         = L.map('map', { maxZoom: 20 }).setView([47.5, 14.5], 7); // Austria center
 const statusEl    = document.getElementById('status');
 const iframeToken = new URLSearchParams(location.search).get('wikarteToken') || '';
 const hoverHighlightPane = map.createPane('wikarte-hover-highlight');
@@ -46,34 +46,73 @@ const darkTiles = L.tileLayer(
       '&copy; <a href="https://carto.com/">CARTO</a>'
   }
 );
+const satelliteTiles = L.tileLayer(
+  'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {
+    maxZoom: 19,
+    attribution:
+      'Tiles &copy; Esri'
+  }
+);
+const threeDTiles = L.tileLayer(
+  'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+  {
+    maxZoom: 17,
+    subdomains: 'abc',
+    attribution:
+      'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, ' +
+      '<a href="https://viewfinderpanoramas.org">SRTM</a> | ' +
+      'Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
+  }
+);
 
-let currentTileLayer = lightTiles;
-lightTiles.addTo(map);
+let currentBaseLayer = 'street';
+let currentTileLayer = null;
 
 // ─── theme ────────────────────────────────────────────────────────────────────
 
 let currentThemeMode = 'light';
+let layerControl = null;
+
+function getActiveTileLayer() {
+  if (currentBaseLayer === 'street') {
+    return currentThemeMode === 'dark' ? darkTiles : lightTiles;
+  }
+  if (currentBaseLayer === 'satellite') return satelliteTiles;
+  return threeDTiles;
+}
+
+function syncActiveTileLayer() {
+  const nextTileLayer = getActiveTileLayer();
+  if (currentTileLayer === nextTileLayer) return;
+
+  if (currentTileLayer && typeof map.removeLayer === 'function') {
+    map.removeLayer(currentTileLayer);
+  }
+
+  nextTileLayer.addTo(map);
+  currentTileLayer = nextTileLayer;
+}
 
 function setTheme(theme) {
   const isDark = theme === 'dark';
-  if (isDark && currentTileLayer !== darkTiles) {
-    map.removeLayer(lightTiles);
-    darkTiles.addTo(map);
-    currentTileLayer = darkTiles;
-  } else if (!isDark && currentTileLayer !== lightTiles) {
-    map.removeLayer(darkTiles);
-    lightTiles.addTo(map);
-    currentTileLayer = lightTiles;
-  }
   document.body.className = isDark ? 'dark-theme' : '';
   currentThemeMode = theme;
+  syncActiveTileLayer();
   if (typeof austriaBorderLayer?.setStyle === 'function') {
     austriaBorderLayer.setStyle(getAustriaBorderStyle());
   }
   if (typeof viennaDistrictLayer?.setStyle === 'function') {
     viennaDistrictLayer.setStyle(getViennaDistrictOutlineStyle());
   }
-  if (themeControl?._updateActive) themeControl._updateActive();
+  if (layerControl?._updateUi) layerControl._updateUi();
+}
+
+function setBaseLayer(layerId) {
+  if (!['street', 'satellite', 'three-d'].includes(layerId)) return;
+  currentBaseLayer = layerId;
+  syncActiveTileLayer();
+  if (layerControl?._updateUi) layerControl._updateUi();
 }
 
 // ─── marker cluster ───────────────────────────────────────────────────────────
@@ -131,47 +170,114 @@ const ResetControl = L.Control.extend({
 });
 map.addControl(new ResetControl());
 
-const ThemeControl = L.Control.extend({
+const LayerControl = L.Control.extend({
   options: { position: 'topleft' },
   onAdd() {
-    const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+    const container = L.DomUtil.create('div', 'leaflet-control wikarte-layer-picker');
+    const optionsWrap = L.DomUtil.create('div', 'wikarte-layer-options', container);
+    const toggleCard = L.DomUtil.create('button', 'wikarte-layer-toggle', container);
+    toggleCard.type = 'button';
 
-    const sunBtn  = L.DomUtil.create('a', 'theme-toggle-btn', container);
-    sunBtn.href   = '#';
-    sunBtn.title  = 'Light theme';
-    // prettier-ignore
-    sunBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+    const layerDefs = [
+      { id: 'street', title: 'Streetmap', previewClass: 'street' },
+      { id: 'three-d', title: '3D Map', previewClass: 'three-d' },
+      { id: 'satellite', title: 'Satellite', previewClass: 'satellite' }
+    ];
+    const layerCards = new Map();
+    let expanded = false;
 
-    const moonBtn  = L.DomUtil.create('a', 'theme-toggle-btn', container);
-    moonBtn.href   = '#';
-    moonBtn.title  = 'Dark theme';
-    // prettier-ignore
-    moonBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-
-    function updateActive() {
-      sunBtn.classList.toggle('active',  currentThemeMode === 'light');
-      moonBtn.classList.toggle('active', currentThemeMode === 'dark');
+    function createPreview(parent, previewClass, { withBadge = false } = {}) {
+      const preview = L.DomUtil.create('div', `wikarte-layer-preview ${previewClass}`, parent);
+      if (withBadge) {
+        const badge = L.DomUtil.create('div', 'wikarte-layer-check', preview);
+        badge.innerHTML = '&#10003;';
+      }
+      return preview;
     }
 
-    // setTheme already updates currentThemeMode and calls _updateActive
-    L.DomEvent.on(sunBtn, 'click', (e) => {
-      L.DomEvent.preventDefault(e);
-      L.DomEvent.stopPropagation(e);
-      setTheme('light');
-    });
-    L.DomEvent.on(moonBtn, 'click', (e) => {
-      L.DomEvent.preventDefault(e);
-      L.DomEvent.stopPropagation(e);
-      setTheme('dark');
+    function setExpanded(nextExpanded) {
+      expanded = nextExpanded;
+      container.classList.toggle('expanded', expanded);
+    }
+
+    layerDefs.forEach(({ id, title, previewClass }) => {
+      const card = L.DomUtil.create('button', 'wikarte-layer-card', optionsWrap);
+      card.type = 'button';
+      card.dataset.layerId = id;
+      createPreview(card, previewClass, { withBadge: true });
+
+      const label = L.DomUtil.create('div', 'wikarte-layer-label', card);
+      label.textContent = title;
+
+      if (id === 'street') {
+        const themeRow = L.DomUtil.create('div', 'wikarte-theme-inline', card);
+
+        const lightBtn = L.DomUtil.create('button', 'wikarte-theme-chip', themeRow);
+        lightBtn.type = 'button';
+        lightBtn.dataset.theme = 'light';
+        lightBtn.textContent = 'Light';
+
+        const darkBtn = L.DomUtil.create('button', 'wikarte-theme-chip', themeRow);
+        darkBtn.type = 'button';
+        darkBtn.dataset.theme = 'dark';
+        darkBtn.textContent = 'Dark';
+
+        [lightBtn, darkBtn].forEach((btn) => {
+          L.DomEvent.on(btn, 'click', (e) => {
+            L.DomEvent.preventDefault(e);
+            L.DomEvent.stopPropagation(e);
+            setTheme(btn.dataset.theme);
+          });
+        });
+      }
+
+      L.DomEvent.on(card, 'click', (e) => {
+        L.DomEvent.preventDefault(e);
+        L.DomEvent.stopPropagation(e);
+        setBaseLayer(id);
+        setExpanded(true);
+      });
+
+      layerCards.set(id, card);
     });
 
-    updateActive();
-    this._updateActive = updateActive;
+    function updateUi() {
+      layerCards.forEach((card, id) => {
+        const isSelected = id === currentBaseLayer;
+        const isStreetSelected = id === 'street' && currentBaseLayer === 'street';
+        card.classList.toggle('selected', isSelected);
+        const preview = card.querySelector('.wikarte-layer-preview');
+        preview?.classList.toggle('selected', isSelected);
+        preview?.classList.toggle('theme-dark', isStreetSelected && currentThemeMode === 'dark');
+        card.querySelectorAll('.wikarte-theme-chip').forEach((chip) => {
+          chip.classList.toggle('active', chip.dataset.theme === currentThemeMode);
+        });
+      });
+
+      const selectedDef = layerDefs.find(def => def.id === currentBaseLayer) || layerDefs[0];
+      toggleCard.innerHTML = '';
+      createPreview(toggleCard, selectedDef.previewClass, { withBadge: false })
+        .classList.toggle('theme-dark', currentBaseLayer === 'street' && currentThemeMode === 'dark');
+      const label = L.DomUtil.create('div', 'wikarte-layer-toggle-label', toggleCard);
+      label.textContent = 'Layers';
+    }
+
+    L.DomEvent.on(toggleCard, 'click', (e) => {
+      L.DomEvent.preventDefault(e);
+      L.DomEvent.stopPropagation(e);
+      setExpanded(!expanded);
+      updateUi();
+    });
+
+    setExpanded(false);
+    updateUi();
+    this._updateUi = updateUi;
     return container;
   }
 });
-const themeControl = new ThemeControl();
-map.addControl(themeControl);
+layerControl = new LayerControl();
+map.addControl(layerControl);
+syncActiveTileLayer();
 
 // ─── utilities ────────────────────────────────────────────────────────────────
 

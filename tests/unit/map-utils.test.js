@@ -187,7 +187,7 @@ describe('Vienna district overlay', () => {
     expect(mocks.mockMap.addLayer).not.toHaveBeenCalled();
   });
 
-  test('shows district outlines and labels inside Vienna at high zoom', () => {
+  test('shows district outlines inside Vienna at high zoom', () => {
     mocks.mockMap._zoom = 12;
     mocks.mockMap._bounds = { intersects: jest.fn().mockReturnValue(true) };
 
@@ -233,6 +233,50 @@ describe('Vienna district overlay', () => {
     syncViennaDistrictOverlay();
 
     expect(mocks.mockMap.removeLayer).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('basemap switching', () => {
+  const getStreetLightLayer = () => mocks.tileLayers[0];
+  const getStreetDarkLayer = () => mocks.tileLayers[1];
+  const getSatelliteLayer = () => mocks.tileLayers[2];
+  const getThreeDLayer = () => mocks.tileLayers[3];
+
+  beforeEach(() => {
+    setBaseLayer('street');
+    setTheme('light');
+    mocks.mockMap.addLayer.mockClear();
+    mocks.mockMap.removeLayer.mockClear();
+    mocks.tileLayers.forEach(layer => layer.addTo.mockClear());
+  });
+
+  test('switches street mode between light and dark tiles', () => {
+    setTheme('dark');
+
+    expect(getStreetDarkLayer().addTo).toHaveBeenCalledWith(mocks.mockMap);
+    expect(mocks.mockMap.removeLayer).toHaveBeenCalledWith(getStreetLightLayer());
+  });
+
+  test('switches to satellite without using street theme tiles', () => {
+    setBaseLayer('satellite');
+
+    expect(getSatelliteLayer().addTo).toHaveBeenCalledWith(mocks.mockMap);
+    expect(mocks.mockMap.removeLayer).toHaveBeenCalledWith(getStreetLightLayer());
+
+    mocks.mockMap.removeLayer.mockClear();
+    getStreetDarkLayer().addTo.mockClear();
+
+    setTheme('dark');
+
+    expect(getStreetDarkLayer().addTo).not.toHaveBeenCalled();
+    expect(mocks.mockMap.removeLayer).not.toHaveBeenCalledWith(getSatelliteLayer());
+  });
+
+  test('switches to the 3D layer', () => {
+    setBaseLayer('three-d');
+
+    expect(getThreeDLayer().addTo).toHaveBeenCalledWith(mocks.mockMap);
+    expect(mocks.mockMap.removeLayer).toHaveBeenCalledWith(getStreetLightLayer());
   });
 });
 

@@ -79,9 +79,22 @@ global.setupLeaflet = function () {
     fitBounds:     jest.fn()
   };
 
+  const tileLayers = [];
+
   global.L = {
     map:    jest.fn().mockReturnValue(mockMap),
-    tileLayer: jest.fn().mockReturnValue({ addTo: jest.fn() }),
+    tileLayer: jest.fn().mockImplementation((url, opts) => {
+      const layer = {
+        _url: url,
+        _opts: opts,
+        addTo: jest.fn(function (targetMap) {
+          targetMap.addLayer(this);
+          return this;
+        })
+      };
+      tileLayers.push(layer);
+      return layer;
+    }),
     latLngBounds: jest.fn().mockImplementation((southWest, northEast) => {
       const sw = normalizeLatLng(southWest);
       const ne = normalizeLatLng(northEast);
@@ -141,5 +154,5 @@ global.setupLeaflet = function () {
     '5020': [47.8095, 13.0550]
   };
 
-  return { mockMap, mockMarkers };
+  return { mockMap, mockMarkers, tileLayers };
 };
