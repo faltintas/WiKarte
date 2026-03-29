@@ -16,6 +16,7 @@ src/map
 src/data
 src/vendor
 assets/icons
+assets/layers
 LICENSE
 THIRD_PARTY_NOTICES.md
 "
