@@ -54,17 +54,6 @@ const satelliteTiles = L.tileLayer(
       'Tiles &copy; Esri'
   }
 );
-const threeDTiles = L.tileLayer(
-  'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-  {
-    maxZoom: 17,
-    subdomains: 'abc',
-    attribution:
-      'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, ' +
-      '<a href="https://viewfinderpanoramas.org">SRTM</a> | ' +
-      'Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
-  }
-);
 
 let currentBaseLayer = 'street';
 let currentTileLayer = null;
@@ -74,12 +63,16 @@ let currentTileLayer = null;
 let currentThemeMode = 'light';
 let layerControl = null;
 
+function syncUiModeClasses() {
+  document.body.classList.toggle('dark-theme', currentThemeMode === 'dark');
+  document.body.classList.toggle('wikarte-satellite-active', currentBaseLayer === 'satellite');
+}
+
 function getActiveTileLayer() {
   if (currentBaseLayer === 'street') {
     return currentThemeMode === 'dark' ? darkTiles : lightTiles;
   }
-  if (currentBaseLayer === 'satellite') return satelliteTiles;
-  return threeDTiles;
+  return satelliteTiles;
 }
 
 function syncActiveTileLayer() {
@@ -95,9 +88,8 @@ function syncActiveTileLayer() {
 }
 
 function setTheme(theme) {
-  const isDark = theme === 'dark';
-  document.body.className = isDark ? 'dark-theme' : '';
   currentThemeMode = theme;
+  syncUiModeClasses();
   syncActiveTileLayer();
   if (typeof austriaBorderLayer?.setStyle === 'function') {
     austriaBorderLayer.setStyle(getAustriaBorderStyle());
@@ -109,9 +101,16 @@ function setTheme(theme) {
 }
 
 function setBaseLayer(layerId) {
-  if (!['street', 'satellite', 'three-d'].includes(layerId)) return;
+  if (!['street', 'satellite'].includes(layerId)) return;
   currentBaseLayer = layerId;
+  syncUiModeClasses();
   syncActiveTileLayer();
+  if (typeof austriaBorderLayer?.setStyle === 'function') {
+    austriaBorderLayer.setStyle(getAustriaBorderStyle());
+  }
+  if (typeof viennaDistrictLayer?.setStyle === 'function') {
+    viennaDistrictLayer.setStyle(getViennaDistrictOutlineStyle());
+  }
   if (layerControl?._updateUi) layerControl._updateUi();
 }
 
@@ -133,19 +132,25 @@ let   viennaDistrictLayer = null;
 let   viennaDistrictOverlayVisible = false;
 
 function getAustriaBorderStyle() {
+  const opacity = currentBaseLayer === 'satellite'
+    ? 0.75
+    : (currentThemeMode === 'dark' ? 0.3 : 0.75);
   return {
     color: '#4BB8E0',
     weight: 1.8,
-    opacity: currentThemeMode === 'dark' ? 0.3 : 0.75,
+    opacity,
     fillOpacity: 0
   };
 }
 
 function getViennaDistrictOutlineStyle() {
+  const opacity = currentBaseLayer === 'satellite'
+    ? 0.75
+    : (currentThemeMode === 'dark' ? 0.3 : 0.75);
   return {
     color: '#4BB8E0',
     weight: 1.8,
-    opacity: currentThemeMode === 'dark' ? 0.3 : 0.75,
+    opacity,
     fillOpacity: 0
   };
 }
@@ -173,103 +178,49 @@ map.addControl(new ResetControl());
 const LayerControl = L.Control.extend({
   options: { position: 'topleft' },
   onAdd() {
-    const container = L.DomUtil.create('div', 'leaflet-control wikarte-layer-picker');
-    const optionsWrap = L.DomUtil.create('div', 'wikarte-layer-options', container);
-    const toggleCard = L.DomUtil.create('button', 'wikarte-layer-toggle', container);
-    toggleCard.type = 'button';
-
-    const layerDefs = [
-      { id: 'street', title: 'Streetmap', previewClass: 'street' },
-      { id: 'three-d', title: '3D Map', previewClass: 'three-d' },
+    const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control wikarte-layer-stack');
+    const buttonDefs = [
+      { id: 'light', title: 'Streetmap light', previewClass: 'light' },
+      { id: 'dark', title: 'Streetmap dark', previewClass: 'dark' },
       { id: 'satellite', title: 'Satellite', previewClass: 'satellite' }
     ];
-    const layerCards = new Map();
-    let expanded = false;
+    const buttons = new Map();
 
-    function createPreview(parent, previewClass, { withBadge = false } = {}) {
-      const preview = L.DomUtil.create('div', `wikarte-layer-preview ${previewClass}`, parent);
-      if (withBadge) {
-        const badge = L.DomUtil.create('div', 'wikarte-layer-check', preview);
-        badge.innerHTML = '&#10003;';
-      }
-      return preview;
-    }
+    buttonDefs.forEach(({ id, title, previewClass }) => {
+      const button = L.DomUtil.create('a', `reset-view-btn wikarte-layer-btn wikarte-layer-btn-${previewClass}`, container);
+      button.href = '#';
+      button.title = title;
+      button.setAttribute('aria-label', title);
 
-    function setExpanded(nextExpanded) {
-      expanded = nextExpanded;
-      container.classList.toggle('expanded', expanded);
-    }
-
-    layerDefs.forEach(({ id, title, previewClass }) => {
-      const card = L.DomUtil.create('button', 'wikarte-layer-card', optionsWrap);
-      card.type = 'button';
-      card.dataset.layerId = id;
-      createPreview(card, previewClass, { withBadge: true });
-
-      const label = L.DomUtil.create('div', 'wikarte-layer-label', card);
-      label.textContent = title;
-
-      if (id === 'street') {
-        const themeRow = L.DomUtil.create('div', 'wikarte-theme-inline', card);
-
-        const lightBtn = L.DomUtil.create('button', 'wikarte-theme-chip', themeRow);
-        lightBtn.type = 'button';
-        lightBtn.dataset.theme = 'light';
-        lightBtn.textContent = 'Light';
-
-        const darkBtn = L.DomUtil.create('button', 'wikarte-theme-chip', themeRow);
-        darkBtn.type = 'button';
-        darkBtn.dataset.theme = 'dark';
-        darkBtn.textContent = 'Dark';
-
-        [lightBtn, darkBtn].forEach((btn) => {
-          L.DomEvent.on(btn, 'click', (e) => {
-            L.DomEvent.preventDefault(e);
-            L.DomEvent.stopPropagation(e);
-            setTheme(btn.dataset.theme);
-          });
-        });
-      }
-
-      L.DomEvent.on(card, 'click', (e) => {
+      L.DomEvent.on(button, 'click', (e) => {
         L.DomEvent.preventDefault(e);
         L.DomEvent.stopPropagation(e);
-        setBaseLayer(id);
-        setExpanded(true);
+
+        if (id === 'light') {
+          currentBaseLayer = 'street';
+          setTheme('light');
+          return;
+        }
+
+        if (id === 'dark') {
+          currentBaseLayer = 'street';
+          setTheme('dark');
+          return;
+        }
+
+        setBaseLayer('satellite');
       });
 
-      layerCards.set(id, card);
+      buttons.set(id, button);
     });
 
     function updateUi() {
-      layerCards.forEach((card, id) => {
-        const isSelected = id === currentBaseLayer;
-        const isStreetSelected = id === 'street' && currentBaseLayer === 'street';
-        card.classList.toggle('selected', isSelected);
-        const preview = card.querySelector('.wikarte-layer-preview');
-        preview?.classList.toggle('selected', isSelected);
-        preview?.classList.toggle('theme-dark', isStreetSelected && currentThemeMode === 'dark');
-        card.querySelectorAll('.wikarte-theme-chip').forEach((chip) => {
-          chip.classList.toggle('active', chip.dataset.theme === currentThemeMode);
-        });
-      });
-
-      const selectedDef = layerDefs.find(def => def.id === currentBaseLayer) || layerDefs[0];
-      toggleCard.innerHTML = '';
-      createPreview(toggleCard, selectedDef.previewClass, { withBadge: false })
-        .classList.toggle('theme-dark', currentBaseLayer === 'street' && currentThemeMode === 'dark');
-      const label = L.DomUtil.create('div', 'wikarte-layer-toggle-label', toggleCard);
-      label.textContent = 'Layers';
+      buttons.get('light')?.classList.toggle('active', currentBaseLayer === 'street' && currentThemeMode === 'light');
+      buttons.get('dark')?.classList.toggle('active', currentBaseLayer === 'street' && currentThemeMode === 'dark');
+      buttons.get('satellite')?.classList.toggle('active', currentBaseLayer === 'satellite');
     }
 
-    L.DomEvent.on(toggleCard, 'click', (e) => {
-      L.DomEvent.preventDefault(e);
-      L.DomEvent.stopPropagation(e);
-      setExpanded(!expanded);
-      updateUi();
-    });
-
-    setExpanded(false);
+    L.DomEvent.disableClickPropagation(container);
     updateUi();
     this._updateUi = updateUi;
     return container;
@@ -277,6 +228,7 @@ const LayerControl = L.Control.extend({
 });
 layerControl = new LayerControl();
 map.addControl(layerControl);
+syncUiModeClasses();
 syncActiveTileLayer();
 
 // ─── utilities ────────────────────────────────────────────────────────────────

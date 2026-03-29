@@ -240,7 +240,6 @@ describe('basemap switching', () => {
   const getStreetLightLayer = () => mocks.tileLayers[0];
   const getStreetDarkLayer = () => mocks.tileLayers[1];
   const getSatelliteLayer = () => mocks.tileLayers[2];
-  const getThreeDLayer = () => mocks.tileLayers[3];
 
   beforeEach(() => {
     setBaseLayer('street');
@@ -270,13 +269,6 @@ describe('basemap switching', () => {
 
     expect(getStreetDarkLayer().addTo).not.toHaveBeenCalled();
     expect(mocks.mockMap.removeLayer).not.toHaveBeenCalledWith(getSatelliteLayer());
-  });
-
-  test('switches to the 3D layer', () => {
-    setBaseLayer('three-d');
-
-    expect(getThreeDLayer().addTo).toHaveBeenCalledWith(mocks.mockMap);
-    expect(mocks.mockMap.removeLayer).toHaveBeenCalledWith(getStreetLightLayer());
   });
 });
 

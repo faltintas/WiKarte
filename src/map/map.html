@@ -65,7 +65,7 @@
       line-height: 1 !important;
     }
     .leaflet-control-zoom a:hover,
-    .reset-view-btn:hover {
+    .reset-view-btn:not(.wikarte-layer-btn):hover {
       background: #3a3a4e !important;
       color: white !important;
     }
@@ -76,220 +76,42 @@
       border-top: 1px solid #3a3a4a !important;
     }
 
-    .wikarte-layer-picker.leaflet-control {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      background: transparent !important;
-      box-shadow: none !important;
-      border-radius: 0 !important;
-      overflow: visible !important;
+    .wikarte-layer-stack.leaflet-control {
+      margin-top: 8px;
     }
-    .wikarte-layer-options {
-      display: none;
-      gap: 10px;
-      align-items: stretch;
-      padding: 8px;
-      background: rgba(255, 255, 255, 0.96);
-      border-radius: 18px;
-      box-shadow: 0 14px 34px rgba(33, 43, 54, 0.18);
-      backdrop-filter: blur(8px);
-    }
-    .wikarte-layer-picker.expanded .wikarte-layer-options {
-      display: flex;
-    }
-    .wikarte-layer-toggle,
-    .wikarte-layer-card {
-      border: 0;
-      cursor: pointer;
-      font: inherit;
-      padding: 10px;
-      min-width: 110px;
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.96);
-      color: #171c24;
-      box-shadow: 0 14px 34px rgba(33, 43, 54, 0.16);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      text-align: center;
-    }
-    .wikarte-layer-card {
+    .wikarte-layer-btn {
       position: relative;
-      min-width: 128px;
-      padding: 8px 8px 10px;
-      box-shadow: none;
-      background: transparent;
-    }
-    .wikarte-layer-preview {
-      position: relative;
-      width: 110px;
-      height: 72px;
-      border-radius: 16px;
+      width: 36px !important;
+      height: 36px !important;
+      padding: 0 !important;
+      background-size: cover !important;
+      background-position: center !important;
+      border-top: 1px solid #3a3a4a !important;
       overflow: hidden;
+    }
+    .wikarte-layer-stack .wikarte-layer-btn:first-child {
+      border-top: none !important;
+    }
+    .wikarte-layer-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
       border: 2px solid transparent;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.55);
-      background-size: cover;
-      background-position: center;
+      pointer-events: none;
     }
-    .wikarte-layer-preview.street {
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.08)),
-        radial-gradient(circle at 28% 32%, rgba(255,255,255,0.88) 0 18%, transparent 19%),
-        linear-gradient(135deg, #e4f5e2 0%, #fbf2d9 34%, #ead7f1 68%, #d8ecfb 100%);
+    .wikarte-layer-btn:hover {
+      background-color: transparent !important;
+      color: inherit !important;
     }
-    .wikarte-layer-preview.street::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(90deg, transparent 20%, rgba(255,255,255,0.85) 20% 24%, transparent 24% 48%, rgba(150, 198, 255, 0.8) 48% 52%, transparent 52%),
-        linear-gradient(0deg, transparent 28%, rgba(255,255,255,0.78) 28% 31%, transparent 31% 63%, rgba(255,255,255,0.82) 63% 67%, transparent 67%);
-      opacity: 0.9;
+    .wikarte-layer-btn-light {
+      background-image: url('../../assets/layers/light.png') !important;
     }
-    .wikarte-layer-preview.street.theme-dark {
-      background:
-        linear-gradient(180deg, rgba(16, 22, 34, 0.14), rgba(8, 12, 18, 0.36)),
-        radial-gradient(circle at 28% 32%, rgba(74, 90, 116, 0.9) 0 18%, transparent 19%),
-        linear-gradient(135deg, #27344b 0%, #222738 34%, #2d2440 68%, #1f3142 100%);
+    .wikarte-layer-btn-dark {
+      background-image: url('../../assets/layers/dark.png') !important;
     }
-    .wikarte-layer-preview.street.theme-dark::before {
-      background:
-        linear-gradient(90deg, transparent 20%, rgba(73, 84, 106, 0.8) 20% 24%, transparent 24% 48%, rgba(75, 184, 224, 0.68) 48% 52%, transparent 52%),
-        linear-gradient(0deg, transparent 28%, rgba(60, 70, 92, 0.78) 28% 31%, transparent 31% 63%, rgba(82, 93, 116, 0.82) 63% 67%, transparent 67%);
+    .wikarte-layer-btn-satellite {
+      background-image: url('../../assets/layers/satellite.png') !important;
     }
-    .wikarte-layer-preview.satellite {
-      background:
-        linear-gradient(140deg, rgba(255,255,255,0.12), rgba(0,0,0,0.12)),
-        radial-gradient(circle at 25% 35%, rgba(167, 202, 134, 0.9) 0 18%, transparent 19%),
-        radial-gradient(circle at 70% 22%, rgba(140, 178, 96, 0.8) 0 14%, transparent 15%),
-        linear-gradient(135deg, #54623b 0%, #7b8451 32%, #34492a 58%, #87765b 100%);
-    }
-    .wikarte-layer-preview.satellite::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(115deg, transparent 0 44%, rgba(215, 222, 210, 0.65) 44% 48%, transparent 48%),
-        linear-gradient(55deg, transparent 0 52%, rgba(70, 88, 54, 0.75) 52% 56%, transparent 56%);
-      mix-blend-mode: screen;
-    }
-    .wikarte-layer-preview.three-d {
-      background:
-        linear-gradient(160deg, rgba(253, 187, 109, 0.18), rgba(37, 46, 76, 0.22)),
-        linear-gradient(135deg, #5b4a46 0%, #2d3446 34%, #6f553f 68%, #1f2632 100%);
-    }
-    .wikarte-layer-preview.three-d::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(135deg, transparent 0 16%, rgba(255,255,255,0.18) 16% 18%, transparent 18% 100%),
-        repeating-linear-gradient(90deg, transparent 0 16px, rgba(131, 161, 208, 0.18) 16px 18px),
-        repeating-linear-gradient(0deg, transparent 0 16px, rgba(255, 214, 148, 0.14) 16px 18px);
-      opacity: 0.95;
-    }
-    .wikarte-layer-preview.selected {
-      border-color: #4bb8e0;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.55), 0 0 0 3px #7b3df1;
-    }
-    .wikarte-layer-check {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 24px;
-      height: 24px;
-      border-radius: 999px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #a855f7;
-      color: white;
-      font-size: 15px;
-      font-weight: 700;
-      box-shadow: 0 6px 16px rgba(126, 58, 242, 0.35);
-      opacity: 0;
-      transform: scale(0.8);
-      transition: opacity 140ms ease, transform 140ms ease;
-    }
-    .wikarte-layer-card.selected .wikarte-layer-check {
-      opacity: 1;
-      transform: scale(1);
-    }
-    .wikarte-layer-label,
-    .wikarte-layer-toggle-label {
-      font-size: 15px;
-      line-height: 1.1;
-      font-weight: 600;
-      color: #171c24;
-    }
-    .wikarte-layer-card.selected .wikarte-layer-label {
-      color: #7b3df1;
-    }
-    .wikarte-theme-inline {
-      display: none;
-      width: 100%;
-      gap: 6px;
-      justify-content: center;
-      margin-top: 2px;
-    }
-    .wikarte-layer-card.selected .wikarte-theme-inline {
-      display: flex;
-    }
-    .wikarte-theme-chip {
-      border: 0;
-      border-radius: 999px;
-      padding: 5px 10px;
-      font-size: 11px;
-      font-weight: 700;
-      background: #edf2f7;
-      color: #536171;
-      cursor: pointer;
-    }
-    .wikarte-theme-chip.active {
-      background: #4bb8e0;
-      color: white;
-    }
-    .wikarte-layer-toggle:hover,
-    .wikarte-layer-card:hover {
-      transform: translateY(-1px);
-    }
-    .wikarte-layer-card.selected .wikarte-theme-inline,
-    .wikarte-layer-card:not(.selected) .wikarte-theme-inline {
-      display: none;
-    }
-    .wikarte-layer-card.selected[data-layer-id="street"] .wikarte-theme-inline {
-      display: flex;
-    }
-
-    .dark-theme .wikarte-layer-options,
-    .dark-theme .wikarte-layer-toggle,
-    .dark-theme .wikarte-layer-card {
-      background: rgba(28, 34, 47, 0.96);
-      color: #f3f5f8;
-      box-shadow: 0 18px 36px rgba(0,0,0,0.35);
-    }
-    .dark-theme .wikarte-layer-card {
-      background: transparent;
-      box-shadow: none;
-    }
-    .dark-theme .wikarte-layer-label,
-    .dark-theme .wikarte-layer-toggle-label {
-      color: #f3f5f8;
-    }
-    .dark-theme .wikarte-layer-card.selected .wikarte-layer-label {
-      color: #caa7ff;
-    }
-    .dark-theme .wikarte-theme-chip {
-      background: #30384a;
-      color: #cfd7e3;
-    }
-    .dark-theme .wikarte-theme-chip.active {
-      background: #4bb8e0;
-      color: white;
-    }
-
     /* Price-tag markers */
     .price-marker {
       background: none !important;
@@ -415,6 +237,50 @@
     .dark-theme .leaflet-popup-close-button   { color: #999 !important; }
     .dark-theme .listing-popup h3             { color: #eee; }
     .dark-theme .listing-popup .details       { color: #999; }
+
+    body.wikarte-satellite-active .price-tag {
+      background: white;
+      color: #333;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      border: none;
+    }
+    body.wikarte-satellite-active .price-tag.wishlisted {
+      background: #d4af37;
+      color: white;
+      box-shadow: 0 1px 6px rgba(212, 175, 55, 0.45);
+      border: none;
+    }
+    body.wikarte-satellite-active .leaflet-popup-content-wrapper,
+    body.dark-theme.wikarte-satellite-active .leaflet-popup-content-wrapper,
+    body.wikarte-satellite-active .leaflet-popup-tip,
+    body.dark-theme.wikarte-satellite-active .leaflet-popup-tip {
+      background: white !important;
+      color: #333 !important;
+    }
+    body.wikarte-satellite-active .leaflet-popup-close-button,
+    body.dark-theme.wikarte-satellite-active .leaflet-popup-close-button {
+      color: #666 !important;
+    }
+    body.wikarte-satellite-active .listing-popup,
+    body.dark-theme.wikarte-satellite-active .listing-popup {
+      color: #333 !important;
+    }
+    body.wikarte-satellite-active .listing-popup h3,
+    body.dark-theme.wikarte-satellite-active .listing-popup h3 {
+      color: #333 !important;
+    }
+    body.wikarte-satellite-active .listing-popup .price,
+    body.dark-theme.wikarte-satellite-active .listing-popup .price {
+      color: #3aaad9 !important;
+    }
+    body.wikarte-satellite-active .listing-popup .details,
+    body.dark-theme.wikarte-satellite-active .listing-popup .details {
+      color: #666 !important;
+    }
+    body.wikarte-satellite-active .listing-popup a,
+    body.dark-theme.wikarte-satellite-active .listing-popup a {
+      color: #3aaad9 !important;
+    }
   </style>
 </head>
 <body>
