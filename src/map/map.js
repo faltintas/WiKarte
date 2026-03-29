@@ -533,7 +533,7 @@ function addListings(data) {
     const marker = L.marker(coords, { icon: createPriceIcon(tagText, { isWishlisted }) });
     marker.wikarteLabelText = tagText;
     marker.wikarteIsWishlisted = isWishlisted;
-    marker.bindPopup(popupHtml, { maxWidth: 300 });
+    marker.bindPopup(popupHtml, { maxWidth: 300, closeButton: false });
     markers.addLayer(marker);
 
     // Register the marker under every numeric ID we can find for this listing
