@@ -1,6 +1,6 @@
 # WiKarte Privacy Policy
 
-Last updated: 2026-03-22
+Last updated: 2026-03-29
 
 WiKarte is a Chrome extension that displays willhaben.at listing results on an interactive map.
 
@@ -16,6 +16,8 @@ WiKarte processes listing information that is already present on willhaben.at pa
 - listing links
 
 WiKarte also reads the current page URL on willhaben.at in order to determine whether the extension should display the map panel.
+
+On willhaben wishlist-enabled pages, WiKarte also reads willhaben's own wishlist control state for a listing, such as whether the save button is currently active, so the corresponding marker can be shown as saved on the map.
 
 ## What data WiKarte does not collect
 
@@ -37,8 +39,9 @@ The processed listing data is used only to:
 
 - place listings on the map
 - highlight matching markers while you browse results
+- mark wishlisted items differently on the map and keep that state in sync when you save or unsave them
 - display marker popups with listing details
-- support search results, saved ads, and Merkliste views
+- support search results, saved ads, wishlist folders, and My Adverts views
 
 ## Data storage
 
@@ -49,4 +52,3 @@ WiKarte does not currently sync data to any cloud service.
 ## Contact
 
 If you need to contact the developer regarding privacy questions, use the support contact listed on the Chrome Web Store item or the GitHub repository for WiKarte.
-

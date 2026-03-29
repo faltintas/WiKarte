@@ -11,8 +11,8 @@ When you navigate to any search results page on willhaben.at (e.g. `/iad/immobil
 
 ### Pages where the map appears
 - Standard search result pages (any category under `/iad/`)
-- Merkliste (saved ads) at `/iad/myprofile/myfindings`
-- Individual Merkliste folders (via `?folderId=…`)
+- Wishlist / saved-ads pages at `/iad/myprofile/myfindings`
+- Individual wishlist folders (via `?folderId=…`)
 - My Adverts pages (`/myadverts`)
 
 ### Pages where the map does NOT appear
@@ -49,6 +49,8 @@ For categories that include a size attribute (e.g. living area for real estate),
 
 **Hover state** — the marker scales up slightly and turns blue on hover.
 
+**Wishlist state** — items already saved in a willhaben wishlist are shown in gold. When a saved item is hovered, the hover state uses a blue background with a gold border so the saved state stays visible.
+
 ---
 
 ## 4. Marker Clustering
@@ -56,7 +58,7 @@ For categories that include a size attribute (e.g. living area for real estate),
 When many listings are close together at the current zoom level, they are grouped into a circular cluster badge showing the count. Cluster behaviour:
 
 - Cluster radius: 40 px
-- Hovering a listing card in the list whose marker is inside a cluster highlights the entire cluster in blue (see §8)
+- Hovering a listing card in the list whose marker is inside a cluster shows a temporary standalone highlighted marker above the cluster (see §8)
 - Clicking a cluster zooms in to reveal individual markers; at maximum zoom the cluster spiderfies (spreads markers radially so each is accessible)
 - Coverage polygons on cluster hover are disabled to keep the map clean
 
@@ -101,10 +103,10 @@ A circular-arrow toolbar button in the top-left of the map resets the view to fi
 Moving the mouse over a listing card in the willhaben page highlights the corresponding marker on the map.
 
 **How it works:**
-- WiKarte detects the numeric ad ID from the DOM element under the cursor (walking up the tree to find a `≥5-digit` numeric `id` attribute)
+- WiKarte detects the numeric ad ID from the DOM element under the cursor using element IDs, data attributes, and listing links
 - If the marker is directly visible on the map, its icon switches to a blue highlighted variant and is raised to the top of the z-stack
-- If the marker is inside a cluster, the cluster badge turns blue and scales up
-- Moving the mouse off the listing restores the original marker icon or cluster colour
+- If the marker is inside a cluster, WiKarte creates a temporary standalone highlighted marker above the cluster so the item remains readable
+- Moving the mouse off the listing restores the original marker icon and removes any temporary hover marker
 - Hovering the same listing twice in a row does not send duplicate messages
 
 ---
@@ -142,15 +144,20 @@ On navigation:
 
 ---
 
-## 11. Merkliste (Saved Ads) Support
+## 11. Wishlist / Saved Ads Support
 
-WiKarte fully supports willhaben's saved-ads (Merkliste) feature, regardless of which categories the saved items belong to.
+WiKarte fully supports willhaben's wishlist / saved-ads feature, regardless of which categories the saved items belong to.
 
 ### Initial load
 Saved ads are extracted from the `__NEXT_DATA__` script tag on page load. Both the single-folder and all-folders view are supported.
 
 ### Folder navigation
 When navigating to a specific folder (`?folderId=…`), WiKarte fetches the folder's listing data from the Next.js data API (`/_next/data/{buildId}/iad/myprofile/myfindings.json?folderId=…`) using the session cookies already present in the browser. The `folderId` parameter is validated to be numeric; the `buildId` is validated to contain only alphanumeric characters, hyphens, and underscores before being interpolated into the URL.
+
+### Live wishlist marker updates
+On normal search result pages, WiKarte also inspects willhaben's own save button state. Items that are already in a wishlist are shown with a gold marker, and adding or removing a listing from a wishlist updates the marker immediately without reloading the page.
+
+The extension uses willhaben's own wishlist controls and state hints such as `aria-pressed="true"` plus listing IDs embedded in `data-testid` values like `search-result-entry-save-ad-<id>`.
 
 ### Noise filtering
 On Merkliste pages, fetch interception ignores API calls that are not `_next/data` navigation responses (e.g. recommendation or analytics endpoints) to prevent spurious map updates.
@@ -168,22 +175,33 @@ Listings that cannot be resolved by either strategy are silently skipped and are
 
 ---
 
-## 13. Status Bar
+## 13. Geographic Overlays
+
+WiKarte adds two subtle geographic overlays to make orientation easier without getting in the way of listing markers:
+
+- **Austria border** — always visible as a lightweight blue national outline
+- **Vienna district boundaries** — visible when zoomed in far enough around Vienna
+
+Both overlays are rendered beneath listing markers and cluster badges so they remain informative without competing with the actual results.
+
+---
+
+## 14. Status Bar
 
 A small translucent overlay in the bottom-left corner of the map shows:
 - `Waiting for listings…` — initial state before any data arrives
-- `N Anzeigen auf der Karte` — once listings are loaded (N = number of markers placed)
+- `N Anzeigen auf der WiKarte` — once listings are loaded (N = number of markers placed)
 - `No listings found in data` — when data arrives but contains no usable listings
 
 ---
 
-## 14. Fetch Interception
+## 15. Fetch Interception
 
 WiKarte intercepts outgoing `fetch` and `XMLHttpRequest` calls made by willhaben itself. When a response from a `/iad/`, `search`, or `_next/data` URL contains listing data, it is forwarded to the map without any additional network requests from the extension. This means the map stays in sync with infinite-scroll, pagination, and filter changes automatically.
 
 ---
 
-## 15. Data Isolation and Privacy
+## 16. Data Isolation and Privacy
 
 - WiKarte does not send any listing data, user data, or behavioural data to any external server
 - The only external network requests are map tile fetches to CARTO's CDN, which is standard for any Leaflet-based map

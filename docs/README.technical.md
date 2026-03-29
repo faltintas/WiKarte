@@ -42,6 +42,8 @@ WiKarte/
 ├── src/map/map.js                 # Leaflet rendering and message handling
 ├── src/content/styles.css             # Injected CSS for the panel and toggle button
 ├── src/data/postcodes.js           # POSTCODE_COORDS lookup table for Austria
+├── src/data/austria-border.js      # Simplified Austria outline dataset
+├── src/data/vienna-districts.js    # Simplified Vienna district boundaries
 ├── src/vendor/
 │   ├── leaflet.js
 │   ├── leaflet.css
@@ -93,7 +95,9 @@ The bridge layer. Runs in Chrome's isolated extension context so it has access t
 | `updateVisibility()` | Shows/hides the panel and toggle button based on `isListPage()` |
 | `extractListingsFromNextData()` | Parses the `__NEXT_DATA__` script tag on initial page load; handles standard search results and Merkliste structures |
 | `fetchMerklisteForCurrentFolder()` | Fetches folder-specific Merkliste data from `/_next/data/{buildId}/…` using `credentials: 'include'` |
-| `setupHoverHighlight()` | Attaches `mouseover`/`mouseout` listeners to `document`; walks the DOM upward to find a numeric ad ID |
+| `setupHoverHighlight()` | Attaches `mouseover`/`mouseout` listeners to `document`; resolves listing IDs from element IDs, data attributes, and detail links |
+| `enrichListingsWithUiState()` | Marks listings as wishlisted based on page context and willhaben save-button state |
+| `setupWishlistStateSync()` | Watches willhaben wishlist controls and pushes live `WIKARTE_WISHLIST_STATE` updates to the map |
 | `sendListingsToMap(data)` | Queues data if the iframe hasn't loaded yet; otherwise calls `doSend()` immediately |
 | `sendInvalidate()` | Posts `WIKARTE_INVALIDATE` to trigger `map.invalidateSize()` after panel resize |
 | `sendThemeToMap(theme)` | Posts `WIKARTE_THEME` to the iframe |
@@ -133,8 +137,9 @@ connect-src 'none';                    ← src/map/map.js makes no network reque
 | Clustering | `L.markerClusterGroup({ maxClusterRadius: 40, spiderfyOnMaxZoom: true, showCoverageOnHover: false })` |
 | Marker storage | `markerMap: Map<string, L.Marker>` — keyed by ad ID (from `item.id` and numeric ID extracted from SEO URL) |
 | Custom controls | `ResetControl` (re-fits `lastBounds`) and `ThemeControl` (sun/moon toggle), both `position: 'topleft'` |
-| Highlight state | Three module-level variables: `highlightedMarker`, `originalIcon`, `highlightedCluster` |
-| Message router | `switch` on `event.data.type` for the five `WIKARTE_*` message types |
+| Geographic overlays | Austria outline always visible; Vienna district layer shown at higher zoom around Vienna |
+| Highlight state | Module-level state for `highlightedMarker`, `originalIcon`, and `hoverOverlayMarker` for clustered-item pop-outs |
+| Message router | `switch` on `event.data.type` for the current `WIKARTE_*` message types |
 
 **Message listener security:** `if (event.source && event.source !== window.parent) return;` — accepts messages from the parent frame only. The `null` source check allows programmatic dispatch in tests.
 
@@ -148,15 +153,22 @@ connect-src 'none';                    ← src/map/map.js makes no network reque
 7. Resolves SEO URL from `SEO_URL` attribute or `contextLinkList`
 8. Resolves coordinates from `COORDINATES` attribute or `POSTCODE_COORDS` lookup
 9. Builds popup HTML with lazy-loaded image, price, category-specific fields (size/rooms when present), address, link
-10. Registers marker under all known numeric IDs for the listing
-11. Fits map bounds at 100 ms, 500 ms, 1500 ms to handle panel sizing race conditions
+10. Applies `wikarteWishlisted` state to the marker icon when available
+11. Registers marker under all known numeric IDs for the listing
+12. Fits map bounds at 100 ms, 500 ms, 1500 ms to handle panel sizing race conditions
 
 **`highlightMarker(adId)` detail:**
 1. Calls `unhighlightMarker()` to clear any previous state
 2. Looks up marker in `markerMap`
 3. Calls `markers.getVisibleParent(marker)` to determine if the marker is visible or clustered
-4. If clustered: adds `.cluster-highlighted` CSS class to the cluster DOM element
-5. If visible: extracts the current label text via `_escapeDiv.innerHTML = originalIcon.options.html; text = _escapeDiv.textContent`, creates a new `highlighted` icon, and raises the z-index
+4. If clustered: creates a temporary standalone highlighted marker in a dedicated high-z-index pane
+5. If visible: extracts the current label text, creates a new `highlighted` icon, and raises the z-index
+
+**`updateMarkerWishlistState(adId, isWishlisted)` detail:**
+1. Looks up the marker in `markerMap`
+2. Updates the marker's stored `wikarteIsWishlisted` state
+3. Refreshes the base icon or highlighted icon immediately
+4. If a clustered hover overlay is active, refreshes that temporary marker too
 
 ---
 
@@ -173,6 +185,7 @@ All messages pass through `window.postMessage`. The message type strings are nam
 | `WIKARTE_INVALIDATE` | content → map iframe | — | Trigger `map.invalidateSize()` |
 | `WIKARTE_HIGHLIGHT` | content → map iframe | `{ adId }` | Highlight a marker by ad ID |
 | `WIKARTE_UNHIGHLIGHT` | content → map iframe | — | Clear the current highlight |
+| `WIKARTE_WISHLIST_STATE` | content → map iframe | `{ adId, isWishlisted }` | Update a marker's saved / unsaved state |
 
 ---
 
@@ -215,7 +228,7 @@ The map iframe declares a strict CSP that blocks inline scripts and all external
 | `html:not(.wikarte-active) #wikarte-panel` | Hides the panel when inactive |
 | `html.wikarte-active #wikarte-toggle` | Shifts toggle left by 50 vw + 10 px when map is open |
 
-Map-internal styles (price tags, popups, dark theme, cluster highlighting) live in `src/map/map.html`'s `<style>` block and are scoped to the iframe document.
+Map-internal styles (price tags, popups, dark theme, wishlist marker states, and geographic overlays) live in `src/map/map.html`'s `<style>` block and are scoped to the iframe document.
 
 ---
 

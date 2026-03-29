@@ -26,7 +26,7 @@ WiKarte
 
 ### Short description
 
-Show willhaben listings on an interactive map while browsing search results and saved ads.
+Show willhaben listings on an interactive map while browsing search results, wishlists, and saved ads.
 
 ### Detailed description
 
@@ -35,11 +35,13 @@ WiKarte adds an interactive side-panel map to willhaben.at so you can explore li
 Features:
 
 - Shows listing markers directly on a map beside willhaben search results
-- Supports search pages, saved ads, Merkliste folders, and My Adverts pages
-- Highlights markers when you hover matching listings in the page
+- Supports search pages, wishlist folders, saved ads, and My Adverts pages
+- Highlights markers when you hover matching listings in the page, including clustered items
+- Marks wishlisted items directly on the map and updates them live when you save or remove them
 - Opens popups with image, price, details, address, and direct listing link
 - Automatically fits the visible listings on the map
 - Supports light and dark themes
+- Adds subtle Austria and Vienna district outlines for easier orientation
 - Uses postcode fallback for listings without explicit coordinates
 
 WiKarte works only on willhaben.at pages and does not require accounts or API keys.
@@ -84,14 +86,14 @@ Recommended screenshots:
 2. Marker popup with image and price visible
 3. Hover highlight behavior
 4. Dark theme
-5. Merkliste or saved ads page
+5. Wishlist or saved ads page
 
 ## Submission Notes For Review
 
 Use this in the reviewer notes field if needed:
 
 ```text
-WiKarte runs only on willhaben.at pages and adds a map side panel for listing results and saved ads. It reads listing data already present on the page or returned by willhaben navigation responses in order to place markers on a Leaflet map. It does not transmit data to the developer's own servers.
+WiKarte runs only on willhaben.at pages and adds a map side panel for listing results, wishlists, and saved ads. It reads listing data already present on the page or returned by willhaben navigation responses in order to place markers on a Leaflet map. It also reads willhaben's own wishlist button state so saved items can be marked on the map. It does not transmit data to the developer's own servers.
 ```
 
 ## Release Checklist
@@ -113,4 +115,3 @@ WiKarte runs only on willhaben.at pages and adds a map side panel for listing re
 - [Listing Requirements](https://developer.chrome.com/docs/webstore/program-policies/listing-requirements)
 - [Privacy fields](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy/)
 - [Supplying Images](https://developer.chrome.com/docs/webstore/images)
-
