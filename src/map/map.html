@@ -106,6 +106,11 @@
       cursor: pointer;
       transform: translate(-50%, -50%);
     }
+    .price-tag.wishlisted {
+      background: #d4af37;
+      color: white;
+      box-shadow: 0 1px 6px rgba(212, 175, 55, 0.45);
+    }
     .price-tag:hover {
       background: #4db8e8;
       color: white;
@@ -118,6 +123,13 @@
       transform: translate(-50%, -50%) scale(1.25);
       box-shadow: 0 3px 12px rgba(77, 184, 232, 0.5);
       z-index: 10000;
+    }
+    .price-tag.highlighted.wishlisted,
+    .price-tag.highlighted.wishlisted:hover {
+      background: #d4af37 !important;
+      color: white !important;
+      border: 2px solid #3aaad9;
+      box-shadow: 0 3px 12px rgba(77, 184, 232, 0.45), 0 0 0 2px rgba(212, 175, 55, 0.45);
     }
 
     /* Popups */
@@ -166,6 +178,12 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.5);
       border: 1px solid #3a3a4a;
     }
+    .dark-theme .price-tag.wishlisted {
+      background: #b99622;
+      color: white;
+      border-color: #d4af37;
+      box-shadow: 0 1px 6px rgba(212, 175, 55, 0.35);
+    }
     .dark-theme .price-tag:hover {
       background: #4db8e8;
       color: white;
@@ -174,6 +192,13 @@
     .dark-theme .price-tag.highlighted:hover {
       background: #3aaad9 !important;
       color: white !important;
+    }
+    .dark-theme .price-tag.highlighted.wishlisted,
+    .dark-theme .price-tag.highlighted.wishlisted:hover {
+      background: #b99622 !important;
+      color: white !important;
+      border: 2px solid #3aaad9;
+      box-shadow: 0 3px 12px rgba(77, 184, 232, 0.4), 0 0 0 2px rgba(212, 175, 55, 0.35);
     }
     .dark-theme #status { background: rgba(0,0,0,0.8); }
 

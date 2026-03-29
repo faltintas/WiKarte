@@ -364,6 +364,22 @@ describe('addListings()', () => {
     addListings({ advertSummaryList: { advertSummary: [merklisteItem] } });
     expect(mocks.mockMarkers.addLayer).toHaveBeenCalledTimes(1);
   });
+
+  test('wishlisted items use the gold marker style', () => {
+    addListings({
+      advertSummaryList: {
+        advertSummary: [
+          {
+            ...makeListing(),
+            wikarteWishlisted: true
+          }
+        ]
+      }
+    });
+
+    const markerInstance = L.marker.mock.results[0].value;
+    expect(markerInstance._opts.icon.options.html).toContain('wishlisted');
+  });
 });
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -424,5 +440,24 @@ describe('highlightMarker() / unhighlightMarker()', () => {
     highlightMarker('123456789');
     unhighlightMarker();
     expect(mocks.mockMap.removeLayer).toHaveBeenCalledTimes(1);
+  });
+
+  test('updates clustered hover overlay to wishlisted highlight style when wishlist state changes', () => {
+    const fakeCluster = { getElement: () => document.createElement('div') };
+    mocks.mockMarkers.getVisibleParent.mockReturnValue(fakeCluster);
+
+    highlightMarker('123456789');
+
+    const overlayMarker = mocks.mockMap.addLayer.mock.calls[0][0];
+    expect(overlayMarker._opts.icon.options.html).toContain('highlighted');
+    expect(overlayMarker._opts.icon.options.html).not.toContain('wishlisted');
+
+    updateMarkerWishlistState('123456789', true);
+
+    expect(overlayMarker.setIcon).toHaveBeenCalledWith(expect.objectContaining({
+      options: expect.objectContaining({
+        html: expect.stringContaining('highlighted wishlisted')
+      })
+    }));
   });
 });

@@ -236,6 +236,7 @@
 
   function sendListingsToMap(data) {
     if (!mapIframe || !data) return;
+    enrichListingsWithUiState(data);
     if (iframeLoaded) {
       doSend(data);
     } else {
@@ -287,22 +288,242 @@
 
   // ─── hover highlight ──────────────────────────────────────────────────────
 
+  function extractListingId(value) {
+    if (typeof value !== 'string') return null;
+    return value.match(/(\d{5,})/)?.[1] ?? null;
+  }
+
+  function getListingIdFromNodeContext(node) {
+    let current = node;
+
+    while (current && current !== document.body) {
+      if (current.id && /^\d{5,}$/.test(current.id)) return current.id;
+
+      const directAttrMatch =
+        extractListingId(current.getAttribute?.('data-id')) ||
+        extractListingId(current.getAttribute?.('data-ad-id')) ||
+        extractListingId(current.getAttribute?.('data-testid')) ||
+        extractListingId(current.getAttribute?.('data-test-id')) ||
+        extractListingId(current.getAttribute?.('href'));
+      if (directAttrMatch) return directAttrMatch;
+
+      const listingLink = current.querySelector?.('a[href*="/d/"], a[href*="willhaben.at/iad/"][href*="/d/"]');
+      const linkId = extractListingId(listingLink?.getAttribute('href'));
+      if (linkId) return linkId;
+
+      current = current.parentElement;
+    }
+
+    return null;
+  }
+
+  function getListingIdFromElement(el) {
+    if (!el || el.nodeType !== Node.ELEMENT_NODE) {
+      return getListingIdFromNodeContext(el?.parentElement || null);
+    }
+    return getListingIdFromNodeContext(el);
+  }
+
+  function readListingAttribute(item, name) {
+    const attrs = item?.attributes?.attribute;
+    if (!Array.isArray(attrs)) return null;
+    const match = attrs.find(entry => entry?.name === name);
+    return match?.values?.[0] ?? null;
+  }
+
+  function getListingIdFromItem(item) {
+    if (item?.id) return String(item.id);
+    const seoUrl = readListingAttribute(item, 'SEO_URL');
+    return seoUrl?.match(/(\d{5,})/)?.[1] ?? null;
+  }
+
+  function getWishlistDescriptor(el) {
+    if (!el || el.nodeType !== Node.ELEMENT_NODE) return '';
+    const parts = [
+      el.getAttribute('aria-label'),
+      el.getAttribute('title'),
+      el.getAttribute('data-testid'),
+      el.getAttribute('data-test-id'),
+      el.getAttribute('name'),
+      el.textContent,
+      typeof el.className === 'string' ? el.className : ''
+    ].filter(Boolean);
+    return parts.join(' ').toLowerCase();
+  }
+
+  function getWishlistedIdFromControl(el) {
+    if (!el || el.nodeType !== Node.ELEMENT_NODE) return null;
+
+    const testId = el.getAttribute('data-testid') || el.getAttribute('data-test-id') || '';
+    const directMatch = testId.match(/(?:^|-)save-ad-(\d{5,})$/);
+    if (directMatch) return directMatch[1];
+
+    return getListingIdFromElement(el);
+  }
+
+  function getWishlistControlIdentity(el) {
+    if (!el || el.nodeType !== Node.ELEMENT_NODE) return null;
+    const testId = el.getAttribute('data-testid') || el.getAttribute('data-test-id') || '';
+    if (/(?:^|-)save-ad-\d{5,}$/.test(testId)) {
+      return { testId };
+    }
+
+    const adId = getWishlistedIdFromControl(el);
+    if (!adId) return null;
+    return { adId };
+  }
+
+  function resolveWishlistControl(identity, fallbackControl = null) {
+    if (!identity) return fallbackControl;
+    if (identity.testId) {
+      return document.querySelector(`[data-testid="${identity.testId}"], [data-test-id="${identity.testId}"]`) || fallbackControl;
+    }
+    if (identity.adId) {
+      return document.querySelector(`[data-testid$="save-ad-${identity.adId}"], [data-test-id$="save-ad-${identity.adId}"]`) || fallbackControl;
+    }
+    return fallbackControl;
+  }
+
+  function isWishlistRelatedControl(el) {
+    if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+    const testId = el.getAttribute('data-testid') || el.getAttribute('data-test-id') || '';
+    if (/(?:^|-)save-ad-\d{5,}$/.test(testId)) return true;
+    return /(merk|wunschliste|wishlist|watchlist|bookmark|favorite|favourite|saved?)/.test(getWishlistDescriptor(el));
+  }
+
+  function isWishlistedControl(el) {
+    const descriptor = getWishlistDescriptor(el);
+    if (!descriptor) return false;
+    if (!/(merk|wunschliste|wishlist|watchlist|bookmark|favorite|favourite|saved?)/.test(descriptor)) {
+      return false;
+    }
+
+    return (
+      el.getAttribute('aria-pressed') === 'true' ||
+      el.getAttribute('aria-checked') === 'true' ||
+      el.getAttribute('data-state') === 'checked' ||
+      el.getAttribute('data-selected') === 'true' ||
+      el.getAttribute('data-active') === 'true' ||
+      el.checked === true ||
+      /(entfernen|remove|saved|gemerkt|gespeichert|bereits gemerkt|in der merkliste)/.test(descriptor)
+    );
+  }
+
+  function collectWishlistedIds() {
+    const wishlistedIds = new Set();
+    const controls = document.querySelectorAll('button, a, input, label, [role="button"], [aria-label], [title], [data-testid], [data-test-id]');
+
+    controls.forEach((control) => {
+      if (!isWishlistedControl(control)) return;
+      const listingId = getWishlistedIdFromControl(control);
+      if (listingId) wishlistedIds.add(listingId);
+    });
+
+    return wishlistedIds;
+  }
+
+  function enrichListingsWithUiState(data) {
+    const summaries = data?.advertSummaryList?.advertSummary ?? data?.rows;
+    if (!Array.isArray(summaries)) return data;
+
+    const wishlistedIds = isMerklistePage() || data?.isMerkliste
+      ? null
+      : collectWishlistedIds();
+
+    summaries.forEach((item) => {
+      const itemId = getListingIdFromItem(item);
+      item.wikarteWishlisted = Boolean(
+        isMerklistePage() ||
+        data?.isMerkliste ||
+        (itemId && wishlistedIds?.has(itemId))
+      );
+    });
+
+    return data;
+  }
+
+  function syncWishlistStateForListing(adId) {
+    if (!adId) return;
+    const wishlistedIds = isMerklistePage() ? null : collectWishlistedIds();
+    postToMap('WIKARTE_WISHLIST_STATE', {
+      adId,
+      isWishlisted: Boolean(isMerklistePage() || wishlistedIds?.has(adId))
+    });
+  }
+
+  function syncWishlistStateFromControl(control) {
+    const adId = getWishlistedIdFromControl(control);
+    if (!adId) return;
+
+    postToMap('WIKARTE_WISHLIST_STATE', {
+      adId,
+      isWishlisted: Boolean(isMerklistePage() || isWishlistedControl(control))
+    });
+  }
+
+  function scheduleWishlistSyncFromControl(control) {
+    if (!control) return;
+    const identity = getWishlistControlIdentity(control);
+    const sync = () => {
+      const currentControl = resolveWishlistControl(identity, control);
+      syncWishlistStateFromControl(currentControl);
+    };
+    const schedule = (delay) => {
+      setTimeout(() => {
+        if (typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(sync);
+        } else {
+          sync();
+        }
+      }, delay);
+    };
+
+    // willhaben may flip aria-pressed asynchronously or replace the control
+    // after the click response arrives, so check a few times briefly.
+    [0, 120, 350, 800].forEach(schedule);
+  }
+
+  function setupWishlistStateSync() {
+    const wishlistObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes') {
+          const target = mutation.target;
+          if (!isWishlistRelatedControl(target)) return;
+          syncWishlistStateFromControl(target);
+          return;
+        }
+
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType !== Node.ELEMENT_NODE) return;
+            if (isWishlistRelatedControl(node)) {
+              syncWishlistStateFromControl(node);
+            }
+            node.querySelectorAll?.('button, a, input, label, [role="button"], [aria-label], [title], [data-testid], [data-test-id]')
+              .forEach((el) => {
+                if (isWishlistRelatedControl(el)) syncWishlistStateFromControl(el);
+              });
+          });
+        }
+      });
+    });
+
+    if (document.body) {
+      wishlistObserver.observe(document.body, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['aria-pressed', 'aria-checked', 'data-state', 'data-selected', 'data-active']
+      });
+    }
+  }
+
   function setupHoverHighlight() {
     let lastHighlightedId = null;
 
-    /** Walk up the DOM from `el` to find the nearest ancestor with a numeric ad ID. */
-    function getAdId(el) {
-      let node = el;
-      while (node && node !== document.body) {
-        if (node.id && /^\d{5,}$/.test(node.id)) return node.id;
-        node = node.parentElement;
-      }
-      return null;
-    }
-
     document.addEventListener('mouseover', (e) => {
       if (!isMapVisible || !mapIframe?.contentWindow) return;
-      const adId = getAdId(e.target);
+      const adId = getListingIdFromElement(e.target);
       if (adId && adId !== lastHighlightedId) {
         lastHighlightedId = adId;
         postToMap('WIKARTE_HIGHLIGHT', { adId });
@@ -311,13 +532,25 @@
 
     document.addEventListener('mouseout', (e) => {
       if (!isMapVisible || !mapIframe?.contentWindow) return;
-      const adId = getAdId(e.target);
-      const nextId = getAdId(e.relatedTarget);
+      const adId = getListingIdFromElement(e.target);
+      const nextId = getListingIdFromElement(e.relatedTarget);
       if (adId && adId === lastHighlightedId && nextId !== adId) {
         lastHighlightedId = null;
         postToMap('WIKARTE_UNHIGHLIGHT');
       }
     });
+
+    document.addEventListener('click', (e) => {
+      const wishlistControl = e.target?.closest?.('button, a, input, label, [role="button"], [aria-label], [title], [data-testid], [data-test-id]');
+      if (isWishlistRelatedControl(wishlistControl)) {
+        scheduleWishlistSyncFromControl(wishlistControl);
+        return;
+      }
+
+      const listingId = getListingIdFromElement(e.target);
+      if (!listingId) return;
+      setTimeout(() => syncWishlistStateForListing(listingId), 0);
+    }, true);
   }
 
   // ─── message handling ─────────────────────────────────────────────────────
@@ -353,6 +586,7 @@
 
   function init() {
     createMapPanel();
+    setupWishlistStateSync();
     setupHoverHighlight();
 
     const data = extractListingsFromNextData();

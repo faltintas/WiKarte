@@ -200,10 +200,11 @@ function shortPrice(price) {
   return Math.round(num).toLocaleString('de-AT');
 }
 
-function createPriceIcon(labelText) {
+function createPriceIcon(labelText, { isWishlisted = false } = {}) {
+  const extraClass = isWishlisted ? ' wishlisted' : '';
   return L.divIcon({
     className: 'price-marker',
-    html: `<div class="price-tag">${labelText}</div>`,
+    html: `<div class="price-tag${extraClass}">${labelText}</div>`,
     iconSize: null,
     iconAnchor: [0, 0]
   });
@@ -470,7 +471,10 @@ function addListings(data) {
     let tagText = `\u20AC ${escapeHtml(shortPrice(attrs['PRICE']))}`;
     if (sizeLabel) tagText += ` (${escapeHtml(sizeLabel)}m\u00B2)`;
 
-    const marker = L.marker(coords, { icon: createPriceIcon(tagText) });
+    const isWishlisted = Boolean(item.wikarteWishlisted);
+    const marker = L.marker(coords, { icon: createPriceIcon(tagText, { isWishlisted }) });
+    marker.wikarteLabelText = tagText;
+    marker.wikarteIsWishlisted = isWishlisted;
     marker.bindPopup(popupHtml, { maxWidth: 300 });
     markers.addLayer(marker);
 
@@ -511,18 +515,11 @@ let highlightedMarker  = null;
 let originalIcon       = null;
 let hoverOverlayMarker = null;
 
-function createHighlightIcon(text) {
-  return L.divIcon({
-    className: 'price-marker',
-    html: `<div class="price-tag highlighted">${text}</div>`,
-    iconSize: null,
-    iconAnchor: [0, 0]
-  });
-}
-
-function getMarkerLabelText(icon) {
-  if (!icon?.options?.html) return '';
-  _escapeDiv.innerHTML = icon.options.html;
+function getMarkerLabelText(source) {
+  if (source?.wikarteLabelText) return source.wikarteLabelText;
+  const html = source?.options?.html || source?.getIcon?.()?.options?.html;
+  if (!html) return '';
+  _escapeDiv.innerHTML = html;
   return _escapeDiv.textContent || '';
 }
 
@@ -542,6 +539,33 @@ function getMarkerCoords(marker) {
   return null;
 }
 
+function createHighlightIcon(text, isWishlisted = false) {
+  const extraClass = isWishlisted ? ' wishlisted' : '';
+  return L.divIcon({
+    className: 'price-marker',
+    html: `<div class="price-tag highlighted${extraClass}">${text}</div>`,
+    iconSize: null,
+    iconAnchor: [0, 0]
+  });
+}
+
+function updateMarkerWishlistState(adId, isWishlisted) {
+  const marker = markerMap.get(String(adId));
+  if (!marker) return;
+
+  marker.wikarteIsWishlisted = Boolean(isWishlisted);
+  const labelText = getMarkerLabelText(marker);
+
+  if (highlightedMarker === marker) {
+    const highlightIcon = createHighlightIcon(labelText, marker.wikarteIsWishlisted);
+    marker.setIcon(highlightIcon);
+    if (hoverOverlayMarker) hoverOverlayMarker.setIcon(highlightIcon);
+    return;
+  }
+
+  marker.setIcon(createPriceIcon(labelText, { isWishlisted: marker.wikarteIsWishlisted }));
+}
+
 function highlightMarker(adId) {
   unhighlightMarker();
   const marker = markerMap.get(String(adId));
@@ -554,11 +578,11 @@ function highlightMarker(adId) {
 
   if (visibleParent && visibleParent !== marker) {
     const coords = getMarkerCoords(marker);
-    const labelText = getMarkerLabelText(originalIcon);
+    const labelText = getMarkerLabelText(marker);
 
     if (coords && labelText) {
       hoverOverlayMarker = L.marker(coords, {
-        icon: createHighlightIcon(labelText),
+        icon: createHighlightIcon(labelText, marker.wikarteIsWishlisted),
         pane: 'wikarte-hover-highlight',
         interactive: false,
         keyboard: false
@@ -574,7 +598,7 @@ function highlightMarker(adId) {
     }
   } else {
     // Marker is directly visible — swap its icon for the highlighted variant
-    marker.setIcon(createHighlightIcon(getMarkerLabelText(originalIcon)));
+    marker.setIcon(createHighlightIcon(getMarkerLabelText(marker), marker.wikarteIsWishlisted));
     marker.setZIndexOffset(10000);
   }
 }
@@ -619,6 +643,9 @@ window.addEventListener('message', function (event) {
       break;
     case 'WIKARTE_UNHIGHLIGHT':
       unhighlightMarker();
+      break;
+    case 'WIKARTE_WISHLIST_STATE':
+      updateMarkerWishlistState(event.data.adId, event.data.isWishlisted);
       break;
   }
 });

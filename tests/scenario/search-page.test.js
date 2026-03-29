@@ -90,6 +90,7 @@ function loadBoth() {
         postSpy(msg);
         // Simulate src/map/map.js receiving the message
         if (msg.type === 'WIKARTE_LISTINGS') addListings(msg.data);
+        if (msg.type === 'WIKARTE_WISHLIST_STATE') updateMarkerWishlistState(msg.adId, msg.isWishlisted);
         if (msg.type === 'WIKARTE_INVALIDATE') {
           mocks.mockMap.invalidateSize();
           mocks.mockMap.fitBounds();
@@ -196,5 +197,136 @@ describe('Scenario: Search results page', () => {
     loadBoth();
     await new Promise(r => setTimeout(r, 100));
     expect(mocks.mockMarkers.addLayer).toHaveBeenCalledTimes(1);
+  });
+
+  test('wishlisted listings are marked before being rendered on the map', async () => {
+    const listingCard = document.createElement('article');
+
+    const listingLink = document.createElement('a');
+    listingLink.href = `https://www.willhaben.at/iad/kaufen/d/wohnung-${THIRTY_LISTINGS[0].id}/`;
+    listingLink.textContent = 'Wohnung öffnen';
+    listingCard.appendChild(listingLink);
+
+    const wishlistButton = document.createElement('button');
+    wishlistButton.setAttribute('aria-label', 'Anzeige Merken');
+    wishlistButton.setAttribute('aria-pressed', 'true');
+    wishlistButton.setAttribute('data-testid', `search-result-entry-save-ad-${THIRTY_LISTINGS[0].id}`);
+    listingCard.appendChild(wishlistButton);
+    document.body.appendChild(listingCard);
+
+    loadBoth();
+    await new Promise(r => setTimeout(r, 100));
+
+    const listingsMsg = postSpy.mock.calls.find(c => c[0]?.type === 'WIKARTE_LISTINGS');
+    expect(listingsMsg[0].data.advertSummaryList.advertSummary[0].wikarteWishlisted).toBe(true);
+
+    const firstMarker = mocks.mockMarkers._layers[0];
+    expect(firstMarker._opts.icon.options.html).toContain('wishlisted');
+  });
+
+  test('wishlist toggle updates the marker immediately after the button state changes', async () => {
+    const listingCard = document.createElement('article');
+
+    const listingLink = document.createElement('a');
+    listingLink.href = `https://www.willhaben.at/iad/kaufen/d/wohnung-${THIRTY_LISTINGS[0].id}/`;
+    listingLink.textContent = 'Wohnung öffnen';
+    listingCard.appendChild(listingLink);
+
+    const wishlistButton = document.createElement('button');
+    wishlistButton.setAttribute('aria-label', 'Anzeige Merken');
+    wishlistButton.setAttribute('aria-pressed', 'false');
+    wishlistButton.setAttribute('data-testid', `search-result-entry-save-ad-${THIRTY_LISTINGS[0].id}`);
+    listingCard.appendChild(wishlistButton);
+    document.body.appendChild(listingCard);
+
+    loadBoth();
+    await new Promise(r => setTimeout(r, 100));
+
+    postSpy.mockClear();
+    wishlistButton.setAttribute('aria-pressed', 'true');
+    wishlistButton.click();
+    await new Promise(r => setTimeout(r, 20));
+
+    const wishlistMsg = postSpy.mock.calls.find(c => c[0]?.type === 'WIKARTE_WISHLIST_STATE');
+    expect(wishlistMsg).toBeDefined();
+    expect(wishlistMsg[0]).toEqual(expect.objectContaining({
+      adId: THIRTY_LISTINGS[0].id,
+      isWishlisted: true
+    }));
+
+    const firstMarker = mocks.mockMarkers._layers[0];
+    expect(firstMarker._icon.options.html).toContain('wishlisted');
+  });
+
+  test('wishlist unmark updates the marker immediately after the button state changes', async () => {
+    const listingCard = document.createElement('article');
+
+    const listingLink = document.createElement('a');
+    listingLink.href = `https://www.willhaben.at/iad/kaufen/d/wohnung-${THIRTY_LISTINGS[0].id}/`;
+    listingLink.textContent = 'Wohnung öffnen';
+    listingCard.appendChild(listingLink);
+
+    const wishlistButton = document.createElement('button');
+    wishlistButton.setAttribute('aria-label', 'Anzeige Merken');
+    wishlistButton.setAttribute('aria-pressed', 'true');
+    wishlistButton.setAttribute('data-testid', `search-result-entry-save-ad-${THIRTY_LISTINGS[0].id}`);
+    listingCard.appendChild(wishlistButton);
+    document.body.appendChild(listingCard);
+
+    loadBoth();
+    await new Promise(r => setTimeout(r, 100));
+
+    const firstMarker = mocks.mockMarkers._layers[0];
+    expect(firstMarker._opts.icon.options.html).toContain('wishlisted');
+
+    postSpy.mockClear();
+    wishlistButton.setAttribute('aria-pressed', 'false');
+    wishlistButton.click();
+    await new Promise(r => setTimeout(r, 20));
+
+    const wishlistMsg = postSpy.mock.calls.find(c => c[0]?.type === 'WIKARTE_WISHLIST_STATE');
+    expect(wishlistMsg).toBeDefined();
+    expect(wishlistMsg[0]).toEqual(expect.objectContaining({
+      adId: THIRTY_LISTINGS[0].id,
+      isWishlisted: false
+    }));
+    expect(firstMarker._icon.options.html).not.toContain('wishlisted');
+  });
+
+  test('wishlist unmark still updates when the button state flips asynchronously', async () => {
+    const listingCard = document.createElement('article');
+
+    const listingLink = document.createElement('a');
+    listingLink.href = `https://www.willhaben.at/iad/kaufen/d/wohnung-${THIRTY_LISTINGS[0].id}/`;
+    listingLink.textContent = 'Wohnung öffnen';
+    listingCard.appendChild(listingLink);
+
+    const wishlistButton = document.createElement('button');
+    wishlistButton.setAttribute('aria-label', 'Anzeige Merken');
+    wishlistButton.setAttribute('aria-pressed', 'true');
+    wishlistButton.setAttribute('data-testid', `search-result-entry-save-ad-${THIRTY_LISTINGS[0].id}`);
+    listingCard.appendChild(wishlistButton);
+    document.body.appendChild(listingCard);
+
+    loadBoth();
+    await new Promise(r => setTimeout(r, 100));
+
+    const firstMarker = mocks.mockMarkers._layers[0];
+    expect(firstMarker._opts.icon.options.html).toContain('wishlisted');
+
+    postSpy.mockClear();
+    wishlistButton.click();
+    setTimeout(() => {
+      wishlistButton.setAttribute('aria-pressed', 'false');
+    }, 120);
+    await new Promise(r => setTimeout(r, 420));
+
+    const wishlistMsg = postSpy.mock.calls.reverse().find(c => c[0]?.type === 'WIKARTE_WISHLIST_STATE');
+    expect(wishlistMsg).toBeDefined();
+    expect(wishlistMsg[0]).toEqual(expect.objectContaining({
+      adId: THIRTY_LISTINGS[0].id,
+      isWishlisted: false
+    }));
+    expect(firstMarker._icon.options.html).not.toContain('wishlisted');
   });
 });
