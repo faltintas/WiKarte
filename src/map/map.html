@@ -124,12 +124,14 @@
       box-shadow: 0 3px 12px rgba(77, 184, 232, 0.5);
       z-index: 10000;
     }
+    .price-tag.wishlisted:hover,
     .price-tag.highlighted.wishlisted,
     .price-tag.highlighted.wishlisted:hover {
-      background: #d4af37 !important;
+      background: #3aaad9 !important;
       color: white !important;
-      border: 2px solid #3aaad9;
-      box-shadow: 0 3px 12px rgba(77, 184, 232, 0.45), 0 0 0 2px rgba(212, 175, 55, 0.45);
+      border: 2px solid #d4af37;
+      transform: translate(-50%, -50%) scale(1.1);
+      box-shadow: 0 2px 10px rgba(77, 184, 232, 0.4), 0 0 0 1px rgba(212, 175, 55, 0.3);
     }
 
     /* Popups */
@@ -193,12 +195,14 @@
       background: #3aaad9 !important;
       color: white !important;
     }
+    .dark-theme .price-tag.wishlisted:hover,
     .dark-theme .price-tag.highlighted.wishlisted,
     .dark-theme .price-tag.highlighted.wishlisted:hover {
-      background: #b99622 !important;
+      background: #3aaad9 !important;
       color: white !important;
-      border: 2px solid #3aaad9;
-      box-shadow: 0 3px 12px rgba(77, 184, 232, 0.4), 0 0 0 2px rgba(212, 175, 55, 0.35);
+      border: 2px solid #d4af37;
+      transform: translate(-50%, -50%) scale(1.1);
+      box-shadow: 0 2px 10px rgba(77, 184, 232, 0.35), 0 0 0 1px rgba(212, 175, 55, 0.25);
     }
     .dark-theme #status { background: rgba(0,0,0,0.8); }
 
