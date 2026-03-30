@@ -5,3 +5,4 @@ node_modules/
 .wikarte-bump-type
 dist/
 screenshots/
+docs/chrome-web-store-submission.md
