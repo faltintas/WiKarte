@@ -1,15 +1,61 @@
 /* WiKarte — injected styles (no modifications to willhaben's DOM) */
 
+html {
+  --wikarte-panel-width: 50vw;
+}
+
 /* ── Map side panel ─────────────────────────────────────────────────────────── */
 #wikarte-panel {
   position: fixed;
   top: 0;
   right: 0;
-  width: 50vw;
+  width: var(--wikarte-panel-width);
   height: 100vh;
   z-index: 99;
   border-left: 1px solid #3a3a4a;
   background: #2b2b3d;
+}
+
+#wikarte-panel-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+#wikarte-panel-resize-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 56px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.16);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.12);
+}
+
+html.wikarte-active #wikarte-panel:hover #wikarte-panel-resize-handle,
+html.wikarte-resizing #wikarte-panel-resize-handle {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+html.wikarte-resizing,
+html.wikarte-resizing body {
+  cursor: ew-resize !important;
+  user-select: none !important;
+}
+
+html.wikarte-resizing #wikarte-panel iframe {
+  pointer-events: none;
 }
 
 #wikarte-panel iframe {
@@ -49,5 +95,5 @@ html:not(.wikarte-active) #wikarte-panel {
 
 /* When map is open, shift the toggle button left so it clears the panel */
 html.wikarte-active #wikarte-toggle {
-  right: calc(50vw + 10px);
+  right: calc(var(--wikarte-panel-width) + 10px);
 }

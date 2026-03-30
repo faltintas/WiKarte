@@ -21,6 +21,7 @@ The map toolbar offers three quick map modes: Street light, Street dark, and Sat
 - **Popups** — click any marker to see the photo, title, price, available details, address, and a link
 - **Auto-fit** — map fits all visible listings into view on every page load
 - **Reset view** — toolbar button to re-fit all listings after manual panning/zooming
+- **Resizable panel** — drag the left edge of the map panel to adjust its width; WiKarte remembers the last size
 - **Three map modes** — Street light, Street dark, and Satellite via image buttons in the map toolbar
 - **Toggle button** — show or hide the map panel at any time
 - **Wishlist marker state** — saved items are shown in gold and update live when you add or remove them from a wishlist

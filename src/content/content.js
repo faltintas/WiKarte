@@ -12,6 +12,9 @@
   let iframeLoaded = false;
   let pendingData  = null;   // holds latest unsent data while iframe is loading
   let currentTheme = 'light';
+  const PANEL_WIDTH_STORAGE_KEY = 'wikarte.panelWidthPx';
+  const DEFAULT_PANEL_WIDTH = '50vw';
+  let resizeInvalidateRaf = 0;
 
   function makeSessionToken() {
     try {
@@ -116,6 +119,130 @@
     postToMap('WIKARTE_INVALIDATE');
   }
 
+  function getPanelMinWidth() {
+    return 320;
+  }
+
+  function getPanelMaxWidth() {
+    const viewportWidth = Math.max(window.innerWidth || 0, 640);
+    return Math.max(getPanelMinWidth(), Math.min(Math.round(viewportWidth * 0.8), viewportWidth - 180));
+  }
+
+  function clampPanelWidth(px) {
+    return Math.min(getPanelMaxWidth(), Math.max(getPanelMinWidth(), Math.round(px)));
+  }
+
+  function setPanelWidth(value) {
+    const rootStyle = document.documentElement.style;
+    if (!value || value === DEFAULT_PANEL_WIDTH) {
+      rootStyle.setProperty('--wikarte-panel-width', DEFAULT_PANEL_WIDTH);
+      return;
+    }
+    rootStyle.setProperty('--wikarte-panel-width', value);
+  }
+
+  function scheduleInvalidateDuringResize() {
+    if (resizeInvalidateRaf) return;
+    resizeInvalidateRaf = requestAnimationFrame(() => {
+      resizeInvalidateRaf = 0;
+      sendInvalidate();
+    });
+  }
+
+  function readSavedPanelWidth() {
+    try {
+      const raw = localStorage.getItem(PANEL_WIDTH_STORAGE_KEY);
+      if (!raw) return DEFAULT_PANEL_WIDTH;
+      const px = Number(raw);
+      if (!Number.isFinite(px) || px <= 0) return DEFAULT_PANEL_WIDTH;
+      return `${clampPanelWidth(px)}px`;
+    } catch {
+      return DEFAULT_PANEL_WIDTH;
+    }
+  }
+
+  function getCurrentPanelWidth(panel) {
+    const rectWidth = panel.getBoundingClientRect?.().width;
+    if (Number.isFinite(rectWidth) && rectWidth > 0) {
+      return clampPanelWidth(rectWidth);
+    }
+
+    const raw = document.documentElement.style.getPropertyValue('--wikarte-panel-width') || DEFAULT_PANEL_WIDTH;
+    if (raw.endsWith('px')) {
+      const px = Number.parseFloat(raw);
+      if (Number.isFinite(px) && px > 0) return clampPanelWidth(px);
+    }
+
+    if (raw.endsWith('vw')) {
+      const vw = Number.parseFloat(raw);
+      if (Number.isFinite(vw) && vw > 0) return clampPanelWidth((window.innerWidth * vw) / 100);
+    }
+
+    return clampPanelWidth((window.innerWidth || 0) * 0.5);
+  }
+
+  function persistPanelWidth(px) {
+    try {
+      localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(clampPanelWidth(px)));
+    } catch {
+      // Ignore storage failures; resizing should still work for the session.
+    }
+  }
+
+  function setupResizablePanel(panel) {
+    const handle = document.createElement('div');
+    handle.id = 'wikarte-panel-resize-handle';
+    handle.setAttribute('role', 'separator');
+    handle.setAttribute('aria-orientation', 'vertical');
+    handle.setAttribute('aria-label', 'WiKarte map width');
+    panel.appendChild(handle);
+
+    let isDragging = false;
+    let activePointerId = null;
+    let startClientX = 0;
+    let startPanelWidth = 0;
+
+    const stopDragging = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      activePointerId = null;
+      document.documentElement.classList.remove('wikarte-resizing');
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', stopDragging);
+      document.removeEventListener('pointercancel', stopDragging);
+      sendInvalidate();
+    };
+
+    const onPointerMove = (event) => {
+      if (!isDragging) return;
+      const delta = startClientX - event.clientX;
+      const nextWidth = clampPanelWidth(startPanelWidth + delta);
+      setPanelWidth(`${nextWidth}px`);
+      persistPanelWidth(nextWidth);
+      scheduleInvalidateDuringResize();
+    };
+
+    handle.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      isDragging = true;
+      activePointerId = event.pointerId;
+      startClientX = event.clientX;
+      startPanelWidth = getCurrentPanelWidth(panel);
+      document.documentElement.classList.add('wikarte-resizing');
+      if (typeof handle.setPointerCapture === 'function' && activePointerId != null) {
+        try {
+          handle.setPointerCapture(activePointerId);
+        } catch {
+          // Ignore browsers/environments that reject pointer capture here.
+        }
+      }
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup', stopDragging);
+      document.addEventListener('pointercancel', stopDragging);
+      event.preventDefault();
+    });
+  }
+
   function updateVisibility() {
     const isList = isListPage();
     const toggle = document.getElementById('wikarte-toggle');
@@ -140,6 +267,7 @@
   function createMapPanel() {
     const panel = document.createElement('div');
     panel.id = 'wikarte-panel';
+    setPanelWidth(readSavedPanelWidth());
 
     iframeToken = makeSessionToken();
     mapIframe = document.createElement('iframe');
@@ -162,6 +290,7 @@
 
     panel.appendChild(mapIframe);
     document.body.appendChild(panel);
+    setupResizablePanel(panel);
 
     const toggle = document.createElement('button');
     toggle.id = 'wikarte-toggle';

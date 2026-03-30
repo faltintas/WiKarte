@@ -7,7 +7,14 @@ This document describes every user-facing feature of WiKarte in detail. WiKarte 
 ## 1. Map Panel
 
 ### Automatic appearance
-When you navigate to any search results page on willhaben.at (e.g. `/iad/immobilien/wohnung-kaufen`, `/iad/auto-motor-tuning`, `/iad/marktplatz`, or any other category), WiKarte automatically injects a map panel that occupies the right half of the browser window. The existing willhaben page is not modified; the panel is layered on top of it via CSS.
+When you navigate to any search results page on willhaben.at (e.g. `/iad/immobilien/wohnung-kaufen`, `/iad/auto-motor-tuning`, `/iad/marktplatz`, or any other category), WiKarte automatically injects a map panel on the right side of the browser window. The existing willhaben page is not modified; the panel is layered on top of it via CSS.
+
+### Adjustable width
+The panel can be resized by dragging its left edge.
+
+- The chosen width is remembered locally for future visits
+- The width is clamped to sensible limits so the page remains usable on smaller screens
+- The map relayouts after resizing so markers and tiles stay aligned
 
 ### Pages where the map appears
 - Standard search result pages (any category under `/iad/`)

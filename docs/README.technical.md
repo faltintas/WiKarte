@@ -89,13 +89,14 @@ The bridge layer. Runs in Chrome's isolated extension context so it has access t
 
 | Function | Description |
 |---|---|
-| `createMapPanel()` | Creates `#wikarte-panel` div + iframe (`src/map/map.html`) + `#wikarte-toggle` button; appends both to `document.body` |
+| `createMapPanel()` | Creates `#wikarte-panel` div + iframe (`src/map/map.html`) + resize handle + `#wikarte-toggle` button; appends them to `document.body` |
 | `isListPage()` | Determines whether the current page is a listing page by inspecting the URL path and the `__NEXT_DATA__` JSON blob |
 | `isMerklistePage()` | Returns `true` for `/myfindings`, `/myadverts`, and `/merkliste` paths |
 | `updateVisibility()` | Shows/hides the panel and toggle button based on `isListPage()` |
 | `extractListingsFromNextData()` | Parses the `__NEXT_DATA__` script tag on initial page load; handles standard search results and Merkliste structures |
 | `fetchMerklisteForCurrentFolder()` | Fetches folder-specific Merkliste data from `/_next/data/{buildId}/…` using `credentials: 'include'` |
 | `setupHoverHighlight()` | Attaches `mouseover`/`mouseout` listeners to `document`; resolves listing IDs from element IDs, data attributes, and detail links |
+| `setupResizablePanel()` | Adds a drag handle on the panel's left edge, updates a CSS width variable, and persists the chosen width in `localStorage` |
 | `enrichListingsWithUiState()` | Marks listings as wishlisted based on page context and willhaben save-button state |
 | `setupWishlistStateSync()` | Watches willhaben wishlist controls and pushes live `WIKARTE_WISHLIST_STATE` updates to the map |
 | `sendListingsToMap(data)` | Queues data if the iframe hasn't loaded yet; otherwise calls `doSend()` immediately |
@@ -230,11 +231,12 @@ The iframe still uses `connect-src 'none'` because Leaflet tile requests are ima
 
 | Selector | Purpose |
 |---|---|
-| `#wikarte-panel` | Fixed full-height panel, 50 vw wide, right edge, z-index 99 |
+| `#wikarte-panel` | Fixed full-height panel, right edge, z-index 99, width driven by `--wikarte-panel-width` |
+| `#wikarte-panel-resize-handle` | Invisible drag target on the panel's left edge for resizing |
 | `#wikarte-panel iframe` | Fills the panel 100 % |
 | `#wikarte-toggle` | Fixed button, top-right, z-index 100 |
 | `html:not(.wikarte-active) #wikarte-panel` | Hides the panel when inactive |
-| `html.wikarte-active #wikarte-toggle` | Shifts toggle left by 50 vw + 10 px when map is open |
+| `html.wikarte-active #wikarte-toggle` | Shifts toggle left by `var(--wikarte-panel-width) + 10 px` when map is open |
 
 Map-internal styles (price tags, popups, dark theme, wishlist marker states, and geographic overlays) live in `src/map/map.html`'s `<style>` block and are scoped to the iframe document.
 

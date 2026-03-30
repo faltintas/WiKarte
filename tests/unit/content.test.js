@@ -72,6 +72,9 @@ beforeEach(() => {
   document.head.innerHTML = '';
   // Reset HTML-level class so visibility state doesn't bleed between tests
   document.documentElement.classList.remove('wikarte-active');
+  document.documentElement.classList.remove('wikarte-resizing');
+  document.documentElement.style.removeProperty('--wikarte-panel-width');
+  window.localStorage.clear();
 
   // Remove any leftover __NEXT_DATA__ element
   const old = document.getElementById('__NEXT_DATA__');
@@ -101,6 +104,12 @@ describe('Panel and toggle creation', () => {
     expect(document.getElementById('wikarte-toggle')).not.toBeNull();
   });
 
+  test('creates resize handle inside #wikarte-panel', () => {
+    setNextData(SEARCH_NEXT_DATA);
+    loadContent();
+    expect(document.getElementById('wikarte-panel-resize-handle')).not.toBeNull();
+  });
+
   test('iframe src is chrome-extension URL', () => {
     setNextData(SEARCH_NEXT_DATA);
     loadContent();
@@ -115,6 +124,33 @@ describe('Panel and toggle creation', () => {
     loadContent();
     const btn = document.getElementById('wikarte-toggle');
     expect(btn?.innerHTML).toContain('svg');
+  });
+
+  test('restores saved panel width from localStorage', () => {
+    window.localStorage.setItem('wikarte.panelWidthPx', '420');
+    setNextData(SEARCH_NEXT_DATA);
+    loadContent();
+    expect(document.documentElement.style.getPropertyValue('--wikarte-panel-width')).toBe('420px');
+  });
+
+  test('dragging resize handle updates stored panel width', () => {
+    Object.defineProperty(window, 'innerWidth', {
+      value: 1200,
+      writable: true,
+      configurable: true
+    });
+
+    setNextData(SEARCH_NEXT_DATA);
+    loadContent();
+
+    const handle = document.getElementById('wikarte-panel-resize-handle');
+    handle.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 600 }));
+    document.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 760 }));
+    document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 760 }));
+
+    expect(document.documentElement.style.getPropertyValue('--wikarte-panel-width')).toBe('440px');
+    expect(window.localStorage.getItem('wikarte.panelWidthPx')).toBe('440');
+    expect(document.documentElement.classList.contains('wikarte-resizing')).toBe(false);
   });
 });
 
