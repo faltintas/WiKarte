@@ -416,6 +416,23 @@ describe('addListings()', () => {
     const markerInstance = L.marker.mock.results[0].value;
     expect(markerInstance._opts.icon.options.html).toContain('wishlisted');
   });
+
+  test('real-estate items show price-per-square-meter and a size badge in marker HTML', () => {
+    addListings({ advertSummaryList: { advertSummary: [makeListing()] } });
+    const markerHtml = L.marker.mock.results[0].value._opts.icon.options.html;
+    expect(markerHtml).toContain('€ 450k');
+    expect(markerHtml).toContain('price-tag-badge');
+    expect(markerHtml).toContain('75 m²');
+    expect(markerHtml).not.toMatch(/€ 6(?:\.|&nbsp;|\s)000\/m²/);
+  });
+
+  test('real-estate popup shows price-per-square-meter as a tag', () => {
+    addListings({ advertSummaryList: { advertSummary: [makeListing()] } });
+    const popupHtml = L.marker.mock.results[0].value.bindPopup.mock.calls[0][0];
+    expect(popupHtml).toContain('popup-tag');
+    expect(popupHtml).toMatch(/€ 6(?:\.|&nbsp;|\s)000\/m²/);
+  });
+
 });
 
 // ════════════════════════════════════════════════════════════════════════════

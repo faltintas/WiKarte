@@ -242,11 +242,55 @@ function shortPrice(price) {
   return Math.round(num).toLocaleString('de-AT');
 }
 
-function createPriceIcon(labelText, { isWishlisted = false } = {}) {
+function formatPricePerSquareMeter(price, size) {
+  const priceNum = parseFloat(price);
+  const sizeNum = parseFloat(size);
+  if (!Number.isFinite(priceNum) || !Number.isFinite(sizeNum) || sizeNum <= 0) return '';
+  return `€ ${Math.round(priceNum / sizeNum).toLocaleString('de-AT')}/m²`;
+}
+
+function buildMarkerLabelData({ price, sizeLabel, pricePerSqmText }) {
+  if (sizeLabel) {
+    return {
+      variant: 'estate',
+      plainText: `€ ${shortPrice(price)} · ${sizeLabel} m²`,
+      mainText: `€ ${escapeHtml(shortPrice(price))}`,
+      row1Badges: [`${escapeHtml(sizeLabel)} m²`],
+      row2Badges: []
+    };
+  }
+
+  return {
+    variant: 'simple',
+    plainText: `€ ${shortPrice(price)}`,
+    mainText: `€ ${escapeHtml(shortPrice(price))}`,
+    row1Badges: [],
+    row2Badges: []
+  };
+}
+
+function buildBadgeRowHtml(badges = []) {
+  if (!Array.isArray(badges) || !badges.length) return '';
+  return `<span class="price-tag-row">${badges.map(badgeText => `<span class="price-tag-badge">${badgeText}</span>`).join('')}</span>`;
+}
+
+function buildMarkerTagHtml(labelData, extraClass = '') {
+  const row1BadgeHtml = Array.isArray(labelData.row1Badges) && labelData.row1Badges.length
+    ? labelData.row1Badges.map(badgeText => `<span class="price-tag-badge">${badgeText}</span>`).join('')
+    : '';
+  const topRowHtml = `<span class="price-tag-top-row"><span class="price-tag-main">${labelData.mainText}</span>${row1BadgeHtml}</span>`;
+  const row2Html = Array.isArray(labelData.row2Badges) && labelData.row2Badges.length
+    ? `<span class="price-tag-row secondary">${buildBadgeRowHtml(labelData.row2Badges)}</span>`
+    : '';
+  const variantClass = labelData.variant === 'estate' ? ' with-meta' : '';
+  return `<div class="price-tag${variantClass}${extraClass}">${topRowHtml}${row2Html}</div>`;
+}
+
+function createPriceIcon(labelData, { isWishlisted = false } = {}) {
   const extraClass = isWishlisted ? ' wishlisted' : '';
   return L.divIcon({
     className: 'price-marker',
-    html: `<div class="price-tag${extraClass}">${labelText}</div>`,
+    html: buildMarkerTagHtml(labelData, extraClass),
     iconSize: null,
     iconAnchor: [0, 0]
   });
@@ -297,17 +341,36 @@ function buildPopupHtml({ imageUrl, heading, price, detailParts, location, seoUr
     wrapper.appendChild(priceEl);
   }
 
-  if (detailParts.length) {
+  const popupTags = detailParts.filter(part => typeof part === 'object' && part?.type === 'tag' && part.value);
+  if (popupTags.length) {
+    const tagsEl = document.createElement('div');
+    tagsEl.className = 'popup-tags';
+    popupTags.forEach((tag) => {
+      const tagEl = document.createElement('span');
+      tagEl.className = 'popup-tag';
+      tagEl.textContent = tag.value;
+      tagsEl.appendChild(tagEl);
+    });
+    wrapper.appendChild(tagsEl);
+  }
+
+  const detailTextParts = detailParts.filter(part => typeof part === 'string' && part);
+  if (detailTextParts.length) {
     const details = document.createElement('div');
     details.className = 'details';
-    details.innerHTML = detailParts.map(escapeHtml).join(' &bull; ');
+    details.innerHTML = detailTextParts.map(escapeHtml).join(' &bull; ');
     wrapper.appendChild(details);
   }
 
-  const locationEl = document.createElement('div');
-  locationEl.className = 'details';
-  locationEl.textContent = location;
-  wrapper.appendChild(locationEl);
+  if (location) {
+    const locationTags = document.createElement('div');
+    locationTags.className = 'popup-tags popup-tags-location';
+    const locationTag = document.createElement('span');
+    locationTag.className = 'popup-tag popup-tag-location';
+    locationTag.textContent = location;
+    locationTags.appendChild(locationTag);
+    wrapper.appendChild(locationTags);
+  }
 
   if (seoUrl) {
     const link = document.createElement('a');
@@ -477,7 +540,7 @@ function addListings(data) {
     count++;
     bounds.push(coords);
 
-    // Compute size once — used in both the popup and the price-tag label
+    // Compute size once — used in the popup and in real-estate marker labels
     const sizeLabel = attrs['ESTATE_SIZE/LIVING_AREA'] !== 'NA'
       ? attrs['ESTATE_SIZE/LIVING_AREA']
       : attrs['ESTATE_SIZE'] !== 'NA'
@@ -491,6 +554,9 @@ function addListings(data) {
         : '';
 
     const price    = formatPrice(attrs['PRICE']);
+    const pricePerSqmText = attrs['ESTATE_SIZE/LIVING_AREA'] !== 'NA'
+      ? formatPricePerSquareMeter(attrs['PRICE'], attrs['ESTATE_SIZE/LIVING_AREA'])
+      : '';
     const heading  = attrs['HEADING'] && attrs['HEADING'] !== 'NA' ? String(attrs['HEADING']) : '';
     const location = [attrs['POSTCODE'], attrs['LOCATION'], attrs['ADDRESS']]
       .filter(v => v && v !== 'NA')
@@ -498,8 +564,9 @@ function addListings(data) {
       .join(', ');
 
     const detailParts = [];
-    if (sizeLabel) detailParts.push(`${escapeHtml(sizeLabel)} m\u00B2`);
-    if (rooms)     detailParts.push(`${escapeHtml(rooms)} Zimmer`);
+    if (sizeLabel) detailParts.push({ type: 'tag', value: `${sizeLabel} m\u00B2` });
+    if (rooms)     detailParts.push({ type: 'tag', value: `${rooms} Zimmer` });
+    if (pricePerSqmText) detailParts.push({ type: 'tag', value: pricePerSqmText });
 
     const popupHtml = buildPopupHtml({
       imageUrl,
@@ -510,12 +577,16 @@ function addListings(data) {
       seoUrl
     });
 
-    let tagText = `\u20AC ${escapeHtml(shortPrice(attrs['PRICE']))}`;
-    if (sizeLabel) tagText += ` (${escapeHtml(sizeLabel)}m\u00B2)`;
+    const labelData = buildMarkerLabelData({
+      price: attrs['PRICE'],
+      sizeLabel,
+      pricePerSqmText
+    });
 
     const isWishlisted = Boolean(item.wikarteWishlisted);
-    const marker = L.marker(coords, { icon: createPriceIcon(tagText, { isWishlisted }) });
-    marker.wikarteLabelText = tagText;
+    const marker = L.marker(coords, { icon: createPriceIcon(labelData, { isWishlisted }) });
+    marker.wikarteLabelData = labelData;
+    marker.wikarteLabelText = labelData.plainText;
     marker.wikarteIsWishlisted = isWishlisted;
     marker.bindPopup(popupHtml, { maxWidth: 300, closeButton: false });
     markers.addLayer(marker);
@@ -557,12 +628,18 @@ let highlightedMarker  = null;
 let originalIcon       = null;
 let hoverOverlayMarker = null;
 
-function getMarkerLabelText(source) {
-  if (source?.wikarteLabelText) return source.wikarteLabelText;
+function getMarkerLabelData(source) {
+  if (source?.wikarteLabelData) return source.wikarteLabelData;
   const html = source?.options?.html || source?.getIcon?.()?.options?.html;
-  if (!html) return '';
+  if (!html) return buildMarkerLabelData({ price: 'NA', sizeLabel: '', pricePerSqmText: '' });
   _escapeDiv.innerHTML = html;
-  return _escapeDiv.textContent || '';
+  return {
+    variant: 'simple',
+    plainText: _escapeDiv.textContent || '',
+    mainText: _escapeDiv.textContent || '',
+    row1Badges: [],
+    row2Badges: []
+  };
 }
 
 function getMarkerCoords(marker) {
@@ -581,11 +658,11 @@ function getMarkerCoords(marker) {
   return null;
 }
 
-function createHighlightIcon(text, isWishlisted = false) {
+function createHighlightIcon(labelData, isWishlisted = false) {
   const extraClass = isWishlisted ? ' wishlisted' : '';
   return L.divIcon({
     className: 'price-marker',
-    html: `<div class="price-tag highlighted${extraClass}">${text}</div>`,
+    html: buildMarkerTagHtml(labelData, ` highlighted${extraClass}`),
     iconSize: null,
     iconAnchor: [0, 0]
   });
@@ -596,16 +673,16 @@ function updateMarkerWishlistState(adId, isWishlisted) {
   if (!marker) return;
 
   marker.wikarteIsWishlisted = Boolean(isWishlisted);
-  const labelText = getMarkerLabelText(marker);
+  const labelData = getMarkerLabelData(marker);
 
   if (highlightedMarker === marker) {
-    const highlightIcon = createHighlightIcon(labelText, marker.wikarteIsWishlisted);
+    const highlightIcon = createHighlightIcon(labelData, marker.wikarteIsWishlisted);
     marker.setIcon(highlightIcon);
     if (hoverOverlayMarker) hoverOverlayMarker.setIcon(highlightIcon);
     return;
   }
 
-  marker.setIcon(createPriceIcon(labelText, { isWishlisted: marker.wikarteIsWishlisted }));
+  marker.setIcon(createPriceIcon(labelData, { isWishlisted: marker.wikarteIsWishlisted }));
 }
 
 function highlightMarker(adId) {
@@ -620,11 +697,11 @@ function highlightMarker(adId) {
 
   if (visibleParent && visibleParent !== marker) {
     const coords = getMarkerCoords(marker);
-    const labelText = getMarkerLabelText(marker);
+    const labelData = getMarkerLabelData(marker);
 
-    if (coords && labelText) {
+    if (coords && labelData?.plainText) {
       hoverOverlayMarker = L.marker(coords, {
-        icon: createHighlightIcon(labelText, marker.wikarteIsWishlisted),
+        icon: createHighlightIcon(labelData, marker.wikarteIsWishlisted),
         pane: 'wikarte-hover-highlight',
         interactive: false,
         keyboard: false
@@ -640,7 +717,7 @@ function highlightMarker(adId) {
     }
   } else {
     // Marker is directly visible — swap its icon for the highlighted variant
-    marker.setIcon(createHighlightIcon(getMarkerLabelText(marker), marker.wikarteIsWishlisted));
+    marker.setIcon(createHighlightIcon(getMarkerLabelData(marker), marker.wikarteIsWishlisted));
     marker.setZIndexOffset(10000);
   }
 }
