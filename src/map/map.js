@@ -226,6 +226,12 @@ function escapeHtml(str) {
   return _escapeDiv.innerHTML;
 }
 
+function extractTextFromHtml(html) {
+  if (!html) return '';
+  const parsed = new DOMParser().parseFromString(String(html), 'text/html');
+  return parsed.body?.textContent || '';
+}
+
 function formatPrice(price) {
   if (!price || price === 'NA') return '';
   const num = parseFloat(price);
@@ -358,7 +364,15 @@ function buildPopupHtml({ imageUrl, heading, price, detailParts, location, seoUr
   if (detailTextParts.length) {
     const details = document.createElement('div');
     details.className = 'details';
-    details.innerHTML = detailTextParts.map(escapeHtml).join(' &bull; ');
+    detailTextParts.forEach((part, index) => {
+      if (index > 0) {
+        const separator = document.createElement('span');
+        separator.className = 'details-separator';
+        separator.textContent = '•';
+        details.appendChild(separator);
+      }
+      details.appendChild(document.createTextNode(part));
+    });
     wrapper.appendChild(details);
   }
 
@@ -632,11 +646,11 @@ function getMarkerLabelData(source) {
   if (source?.wikarteLabelData) return source.wikarteLabelData;
   const html = source?.options?.html || source?.getIcon?.()?.options?.html;
   if (!html) return buildMarkerLabelData({ price: 'NA', sizeLabel: '', pricePerSqmText: '' });
-  _escapeDiv.innerHTML = html;
+  const text = extractTextFromHtml(html);
   return {
     variant: 'simple',
-    plainText: _escapeDiv.textContent || '',
-    mainText: _escapeDiv.textContent || '',
+    plainText: text,
+    mainText: text,
     row1Badges: [],
     row2Badges: []
   };

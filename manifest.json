@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WiKarte",
-  "version": "1.29.0",
+  "version": "1.30.0",
   "description": "Shows willhaben.at listings on an interactive map side panel",
   "content_scripts": [
     {
@@ -45,5 +45,15 @@
   "icons": {
     "48": "assets/icons/icon48.png",
     "128": "assets/icons/icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "wikarte@faltintas.github.io",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
   }
 }
