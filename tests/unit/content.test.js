@@ -185,6 +185,22 @@ describe('Map visibility', () => {
     expect(document.documentElement.classList.contains('wikarte-active')).toBe(false);
   });
 
+  test('toggle hidden on standalone willhaben mapobject page', () => {
+    Object.defineProperty(window, 'location', {
+      value: {
+        pathname: '/iad/mapobject',
+        search: '?adId=1553610328',
+        href: 'https://www.willhaben.at/iad/mapobject?adId=1553610328'
+      },
+      writable: true, configurable: true
+    });
+    setNextData({ buildId: 'x', props: { pageProps: {} } });
+    loadContent();
+    const toggle = document.getElementById('wikarte-toggle');
+    expect(toggle?.style.display).toBe('none');
+    expect(document.documentElement.classList.contains('wikarte-active')).toBe(false);
+  });
+
   test('map shown on Merkliste (myfindings) page', () => {
     Object.defineProperty(window, 'location', {
       value: { pathname: '/iad/myprofile/myfindings', search: '?folderId=123' },

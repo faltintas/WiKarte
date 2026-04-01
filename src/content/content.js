@@ -92,10 +92,16 @@
     );
   }
 
+  function isStandaloneMapPage() {
+    const { pathname } = location;
+    return pathname.includes('/mapobject');
+  }
+
   function isListPage() {
     const { pathname } = location;
     if (/\/d\//.test(pathname)) return false;
     if (pathname === '/' || pathname === '/iad' || pathname === '/iad/') return false;
+    if (isStandaloneMapPage()) return false;
 
     if (isMerklistePage()) return true;
 
