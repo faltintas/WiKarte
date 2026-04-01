@@ -268,6 +268,14 @@
     }
   }
 
+  function scheduleVisibilityRefresh() {
+    setTimeout(() => {
+      updateVisibility();
+      if (isMerklistePage()) fetchMerklisteForCurrentFolder();
+    }, 300);
+    setTimeout(updateVisibility, 500);
+  }
+
   // ─── panel creation ───────────────────────────────────────────────────────
 
   function createMapPanel() {
@@ -742,15 +750,12 @@
     if (event.data?.type === 'WIKARTE_NAV_CHANGE') {
       // Two-pass update: Next.js may not have committed DOM changes immediately.
       // First pass handles the common case; second pass is a safety retry.
-      setTimeout(() => {
-        updateVisibility();
-        if (isMerklistePage()) fetchMerklisteForCurrentFolder();
-      }, 300);
-      setTimeout(updateVisibility, 500);
+      scheduleVisibilityRefresh();
     }
   });
 
-  window.addEventListener('popstate', updateVisibility);
+  window.addEventListener('popstate', scheduleVisibilityRefresh);
+  window.addEventListener('pageshow', scheduleVisibilityRefresh);
 
   // ─── init ─────────────────────────────────────────────────────────────────
 

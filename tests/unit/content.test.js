@@ -335,6 +335,36 @@ describe('Message handling', () => {
     // No crash and panel still exists
     expect(document.getElementById('wikarte-panel')).not.toBeNull();
   });
+
+  test('browser back navigation restores map visibility on list page', async () => {
+    Object.defineProperty(window, 'location', {
+      value: {
+        pathname: '/iad/immobilien/d/schoene-wohnung-123456789/',
+        search: '',
+        href: 'https://www.willhaben.at/iad/immobilien/d/schoene-wohnung-123456789/'
+      },
+      writable: true, configurable: true
+    });
+    setNextData({ buildId: 'x', props: { pageProps: {} } });
+    loadContent();
+
+    expect(document.documentElement.classList.contains('wikarte-active')).toBe(false);
+
+    Object.defineProperty(window, 'location', {
+      value: {
+        pathname: '/iad/searchagent/alert',
+        search: '?verticalId=2&searchId=101&alertId=67281039',
+        href: 'https://www.willhaben.at/iad/searchagent/alert?verticalId=2&searchId=101&alertId=67281039'
+      },
+      writable: true, configurable: true
+    });
+    setNextData(SEARCH_NEXT_DATA);
+
+    window.dispatchEvent(new PopStateEvent('popstate'));
+
+    await new Promise(r => setTimeout(r, 600));
+    expect(document.documentElement.classList.contains('wikarte-active')).toBe(true);
+  });
 });
 
 // ════════════════════════════════════════════════════════════════════════════
