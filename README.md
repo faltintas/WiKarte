@@ -43,6 +43,30 @@ WiKarte reads listing data already present on the willhaben.at page you are view
 
 ---
 
+## Building
+
+Requires Node.js and `zip`.
+
+```sh
+npm run build:webstore
+```
+
+This produces `dist/wikarte-webstore-v<version>.zip`, ready to load as an unpacked extension or submit to the Chrome Web Store or Firefox Add-ons (AMO).
+
+### Testing in Chrome
+
+1. Go to `chrome://extensions` and enable **Developer mode**
+2. Click **Load unpacked** and select the unzipped extension folder
+
+### Testing in Firefox
+
+1. Go to `about:debugging` → **This Firefox**
+2. Click **Load Temporary Add-on** and select any file inside the unzipped folder (e.g. `manifest.json`)
+
+The add-on stays active until Firefox is restarted.
+
+---
+
 ## License
 
 MIT. See [LICENSE](./LICENSE) and [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
