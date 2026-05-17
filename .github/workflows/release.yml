@@ -1,0 +1,36 @@
+name: Build
+
+on:
+  push:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Build addon
+        run: npm run build:webstore
+
+      - name: Get version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: wikarte-webstore-v${{ steps.version.outputs.version }}
+          path: dist/wikarte-webstore-v${{ steps.version.outputs.version }}.zip
+
+      - name: Upload release asset
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/wikarte-webstore-v${{ steps.version.outputs.version }}.zip
