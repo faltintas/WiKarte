@@ -102,6 +102,13 @@
     if (/\/d\//.test(pathname)) return false;
     if (pathname === '/' || pathname === '/iad' || pathname === '/iad/') return false;
     if (isStandaloneMapPage()) return false;
+    const excludedPrefixes = [
+      '/iad/myprofile/mytransactions',
+      '/iad/myprofile/myadverts',
+      '/iad/myprofile/renewad',
+      '/iad/anzeigenaufgabe/',
+    ];
+    if (excludedPrefixes.some(p => pathname.startsWith(p))) return false;
 
     if (isMerklistePage()) return true;
 
